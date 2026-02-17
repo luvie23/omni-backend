@@ -9,7 +9,7 @@ class TestController extends Controller
 {
     public function index()
     {
-        Log::debug('An informational message.');
+        // Log::debug('An informational message.');
         return ['message' => 'TEST'];
     }
 }
