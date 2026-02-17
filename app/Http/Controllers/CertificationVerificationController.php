@@ -18,7 +18,7 @@ class CertificationVerificationController extends Controller
         $q = trim($request->input('q'));
         $qNorm = $this->normalize($q);
 
-        Log::info('Certification verify hit', ['q' => $q]);
+        // Log::info('Certification verify hit', ['q' => $q]);
 
         // 1) Exact match: certification number
         $certMatches = CertifiedPerson::query()
