@@ -16,7 +16,6 @@ class CertificationVerificationController extends Controller
 
         $q = trim($request->input('q'));
 
-        Log::info('Certification verify hit', ['q' => $q]);
 
         // Search logic:
         // - certification_number: EXACT
