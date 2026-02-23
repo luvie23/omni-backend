@@ -17,6 +17,11 @@ Route::get('/test', [TestController::class, 'index']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
+    $request->user()->currentAccessToken()->delete();
+    return response()->json(['message' => 'Logged out']);
+});
+
 Route::get('/certifications/verify', [CertificationVerificationController::class, 'verify']);
 
 
