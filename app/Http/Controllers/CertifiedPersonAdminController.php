@@ -18,13 +18,13 @@ class CertifiedPersonAdminController extends Controller
 
         $contractor = Contractor::find($contractorId);
 
-        logger()->info('Admin CertifiedPerson manual contractor lookup', [
-            'route_contractor_raw' => $request->route('contractor'),
-            'interpreted_contractor_id' => $contractorId,
-            'found' => (bool) $contractor,
-            'contractor_id' => $contractor?->id,
-            'contractor_user_id' => $contractor?->user_id,
-        ]);
+        // logger()->info('Admin CertifiedPerson manual contractor lookup', [
+        //     'route_contractor_raw' => $request->route('contractor'),
+        //     'interpreted_contractor_id' => $contractorId,
+        //     'found' => (bool) $contractor,
+        //     'contractor_id' => $contractor?->id,
+        //     'contractor_user_id' => $contractor?->user_id,
+        // ]);
 
         abort_unless($contractor, 404, 'Contractor not found.');
 
