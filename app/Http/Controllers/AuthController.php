@@ -27,7 +27,7 @@ class AuthController extends Controller
         }
 
         // Optional: delete old tokens (forces single session)
-        $user->tokens()->delete();
+        // $user->tokens()->delete();
 
         $token = $user->createToken('api')->plainTextToken;
 

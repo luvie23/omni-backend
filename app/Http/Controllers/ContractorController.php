@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Contractor;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ContractorController extends Controller
@@ -47,9 +48,9 @@ class ContractorController extends Controller
         ]);
     }
 
-    // Admin: list contractors (users who have contractor role)
     public function index(Request $request)
     {
+    // Log::info('In contractors index');
         $users = User::query()
             ->role('contractor')
             ->with('contractorProfile')
@@ -112,24 +113,30 @@ class ContractorController extends Controller
         ]);
     }
 
-    private function contractorPayload(User $user): array
+    private function contractorPayload(User $u): array
     {
-        $profile = $user->contractorProfile;
+        $contractor = $u->contractorProfile;
 
         return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'roles' => $user->getRoleNames(), // collection -> JSON array
-            'contractor_profile' => $profile ? [
-                'company_name' => $profile->company_name,
-                'company_website_url' => $profile->company_website_url,
-                'mailing_address' => $profile->mailing_address,
-                'city' => $profile->city,
-                'state' => $profile->state,
-                'zip' => $profile->zip,
-                'service_area' => $profile->service_area,
-            ] : null,
+            // 🔥 IMPORTANT: this is now contractors.id
+            'id' => $contractor?->id,
+
+            // if you still want the user id, expose it separately
+            'user_id' => $u->id,
+
+            'name' => $u->name,
+            'email' => $u->email,
+            'roles' => $u->getRoleNames(),
+
+            'contractor_profile' => [
+                'company_name' => $contractor?->company_name,
+                'company_website_url' => $contractor?->company_website_url,
+                'mailing_address' => $contractor?->mailing_address,
+                'city' => $contractor?->city,
+                'state' => $contractor?->state,
+                'zip' => $contractor?->zip,
+                'service_area' => $contractor?->service_area,
+            ],
         ];
     }
 }

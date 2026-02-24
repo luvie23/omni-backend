@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CertifiedPersonAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationVerificationController;
 use App\Http\Controllers\CertifiedPersonController;
@@ -37,11 +38,34 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'destroy']);
     });
 
-    // admin can manage contractors (optional)
     Route::middleware('role:admin')->group(function () {
         Route::post('/register/contractor', [AuthController::class, 'registerContractor']);
         Route::get('/contractors', [ContractorController::class, 'index']);
         Route::get('/contractors/{user}', [ContractorController::class, 'show']); // user id
         Route::patch('/contractors/{user}', [ContractorController::class, 'update']); // edit contractor profile
+
+        // Get certified people for a contractor (contractors.id)
+        Route::get(
+            '/admin/contractors/{contractor}/certified-people',
+            [CertifiedPersonAdminController::class, 'index']
+        );
+
+        // Create certified person for contractor (contractors.id)
+        Route::post(
+            '/admin/contractors/{contractor}/certified-people',
+            [CertifiedPersonAdminController::class, 'store']
+        );
+
+        // Update certified person
+        Route::patch(
+            '/admin/certified-people/{certifiedPerson}',
+            [CertifiedPersonAdminController::class, 'update']
+        );
+
+        // Delete certified person
+        Route::delete(
+            '/admin/certified-people/{certifiedPerson}',
+            [CertifiedPersonAdminController::class, 'destroy']
+        );
     });
 });
