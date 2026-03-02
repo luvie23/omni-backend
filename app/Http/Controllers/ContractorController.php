@@ -59,41 +59,27 @@ class ContractorController extends Controller
         return response()->json($users->through(fn ($u) => $this->contractorPayload($u)));
     }
 
-    // Admin: show a contractor by user id
-    public function show(User $user)
+    // Admin: show contractor by contractors.id
+    public function show(Contractor $contractor)
     {
-        $user->load('contractorProfile');
-
-        abort_unless($user->hasRole('contractor'), 404);
+        $contractor->load('user');
 
         return response()->json([
-            'data' => $this->contractorPayload($user),
+            'data' => $this->contractorPayloadFromContractor($contractor),
         ]);
     }
 
-    // Admin: update contractor profile by user id
-    public function update(Request $request, User $user)
+    // Admin: update contractor profile by contractors.id
+    public function update(Request $request, Contractor $contractor)
     {
-        $user->load('contractorProfile');
-
-        abort_unless($user->hasRole('contractor'), 404);
-
-        $contractor = $user->contractorProfile ?? Contractor::create([
-            'user_id' => $user->id,
-            'company_name' => '',
-            'mailing_address' => '',
-            'city' => '',
-            'state' => 'NA',
-            'zip' => '',
-            'service_area' => '',
-        ]);
-
         $data = $this->validateContractor($request, $partial = true);
 
         $contractor->fill($data)->save();
 
         return response()->json([
-            'data' => $this->contractorPayload($user->fresh()->load('contractorProfile')),
+            'data' => $this->contractorPayloadFromContractor(
+                $contractor->fresh()->load('user')
+            ),
         ]);
     }
 
@@ -139,4 +125,29 @@ class ContractorController extends Controller
             ],
         ];
     }
+
+
+    private function contractorPayloadFromContractor(Contractor $contractor): array
+    {
+        $user = $contractor->user;
+
+        return [
+            'id' => $contractor->id,       // contractors.id
+            'user_id' => $user->id,       // users.id
+
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->getRoleNames(),
+
+            'contractor_profile' => [
+                'company_name' => $contractor->company_name,
+                'company_website_url' => $contractor->company_website_url,
+                'mailing_address' => $contractor->mailing_address,
+                'city' => $contractor->city,
+                'state' => $contractor->state,
+                'zip' => $contractor->zip,
+                'service_area' => $contractor->service_area,
+            ],
+        ];
+}
 }

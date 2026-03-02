@@ -41,8 +41,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin')->group(function () {
         Route::post('/register/contractor', [AuthController::class, 'registerContractor']);
         Route::get('/contractors', [ContractorController::class, 'index']);
-        Route::get('/contractors/{user}', [ContractorController::class, 'show']); // user id
-        Route::patch('/contractors/{user}', [ContractorController::class, 'update']); // edit contractor profile
+        Route::get('/contractors/{contractor}', [ContractorController::class, 'show']);
+        Route::patch('/contractors/{contractor}', [ContractorController::class, 'update']);
 
         // Get certified people for a contractor (contractors.id)
         Route::get(
