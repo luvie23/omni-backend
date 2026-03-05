@@ -7,6 +7,8 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class ContractorController extends Controller
 {
@@ -30,7 +32,7 @@ class ContractorController extends Controller
             // In case role exists but profile doesn't yet
             $contractor = Contractor::create([
                 'user_id' => $user->id,
-                'company_name' => '',     // will be overwritten after validation if required
+                'company_name' => '',
                 'mailing_address' => '',
                 'city' => '',
                 'state' => 'NA',
@@ -83,6 +85,43 @@ class ContractorController extends Controller
         ]);
     }
 
+    public function uploadLogo(Request $request)
+    {
+        $user = $request->user();
+        $contractor = $user->contractorProfile;
+
+        abort_unless($contractor, 404, 'Contractor profile not found.');
+
+        $data = $request->validate([
+            'logo' => [
+                'required',
+                'file',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:2048', // 2MB
+            ],
+        ]);
+
+        // Delete old logo if exists
+        if ($contractor->logo_path && Storage::disk('public')->exists($contractor->logo_path)) {
+            Storage::disk('public')->delete($contractor->logo_path);
+        }
+
+        // Store new logo
+        $path = $data['logo']->store('contractor-logos', 'public');
+
+        $contractor->logo_path = $path;
+        $contractor->save();
+
+        return response()->json([
+            'message' => 'Logo uploaded successfully.',
+            'data' => [
+                'logo_path' => $contractor->logo_path,
+                'logo_url' => Storage::url($contractor->logo_path),
+            ],
+        ]);
+    }
+
     private function validateContractor(Request $request, bool $partial = false): array
     {
         // If partial updates (PATCH), allow nullable fields & "sometimes"
@@ -90,6 +129,7 @@ class ContractorController extends Controller
 
         return $request->validate([
             'company_name' => $sometimes . 'required|string|max:255',
+            'contact_number' => $sometimes . 'nullable|string|max:30',
             'company_website_url' => $sometimes . 'nullable|url|max:255',
             'mailing_address' => $sometimes . 'required|string|max:255',
             'city' => $sometimes . 'required|string|max:100',
@@ -104,10 +144,9 @@ class ContractorController extends Controller
         $contractor = $u->contractorProfile;
 
         return [
-            // 🔥 IMPORTANT: this is now contractors.id
+
             'id' => $contractor?->id,
 
-            // if you still want the user id, expose it separately
             'user_id' => $u->id,
 
             'name' => $u->name,
@@ -116,7 +155,9 @@ class ContractorController extends Controller
 
             'contractor_profile' => [
                 'company_name' => $contractor?->company_name,
+                'contact_number' => $contractor?->contact_number,
                 'company_website_url' => $contractor?->company_website_url,
+                'logo_url' => $contractor?->logo_path ? Storage::url($contractor->logo_path) : null,
                 'mailing_address' => $contractor?->mailing_address,
                 'city' => $contractor?->city,
                 'state' => $contractor?->state,

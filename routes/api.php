@@ -36,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/certified-people', [CertifiedPersonController::class, 'store']);
         Route::patch('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'update']);
         Route::delete('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'destroy']);
+        Route::post('/contractor/logo', [ContractorController::class, 'uploadLogo']);
     });
 
     Route::middleware('role:admin')->group(function () {

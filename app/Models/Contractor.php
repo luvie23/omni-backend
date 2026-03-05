@@ -9,7 +9,9 @@ class Contractor extends Model
     protected $fillable = [
         'user_id',
         'company_name',
+        'contact_number',
         'company_website_url',
+        'logo_path',
         'mailing_address',
         'city',
         'state',
