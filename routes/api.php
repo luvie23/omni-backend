@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationVerificationController;
 use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
+use App\Http\Controllers\KnowledgeBaseAdminController;
+use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -25,6 +27,12 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
 
 Route::get('/certifications/verify', [CertificationVerificationController::class, 'verify']);
 
+Route::get('/admin/knowledge-base/{article}/video', [KnowledgeBaseAdminController::class, 'stream'])
+        ->name('admin.knowledge-base.video');
+
+Route::get('/knowledge-base/{article}/video', [KnowledgeBaseController::class, 'stream'])
+        ->name('knowledge-base.video');
+
 
 Route::middleware('auth:sanctum')->group(function () {
 
@@ -38,6 +46,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'update']);
         Route::delete('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'destroy']);
         Route::post('/contractor/logo', [ContractorController::class, 'uploadLogo']);
+
+        Route::get('/knowledge-base', [KnowledgeBaseController::class, 'index']);
+        Route::get('/knowledge-base/{article}', [KnowledgeBaseController::class, 'show']);
+        Route::get('/knowledge-base/{article}/video', [KnowledgeBaseController::class, 'stream']);
 
     });
 
@@ -75,5 +87,12 @@ Route::middleware('auth:sanctum')->group(function () {
             '/admin/certified-people/{certifiedPerson}',
             [CertifiedPersonAdminController::class, 'destroy']
         );
+
+        Route::get('/admin/knowledge-base', [KnowledgeBaseAdminController::class, 'index']);
+        Route::post('/admin/knowledge-base', [KnowledgeBaseAdminController::class, 'store']);
+        Route::get('/admin/knowledge-base/{article}', [KnowledgeBaseAdminController::class, 'show']);
+        Route::patch('/admin/knowledge-base/{article}', [KnowledgeBaseAdminController::class, 'update']);
+        Route::delete('/admin/knowledge-base/{article}', [KnowledgeBaseAdminController::class, 'destroy']);
+
     });
 });
