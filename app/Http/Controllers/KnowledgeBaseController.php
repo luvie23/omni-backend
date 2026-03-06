@@ -24,9 +24,9 @@ class KnowledgeBaseController extends Controller
 
     public function show(Request $request)
     {
-        $articleId = (int) $request->route('article');
+        $slug = (string) $request->route('article');
 
-        $article = KnowledgeBaseArticle::findOrFail($articleId);
+        $article = KnowledgeBaseArticle::where('slug', $slug)->firstOrFail();
 
         abort_unless($article->is_published, 404);
 
@@ -126,7 +126,7 @@ class KnowledgeBaseController extends Controller
             'created_at' => $article->created_at,
             'updated_at' => $article->updated_at,
             'video_stream_url' => URL::temporarySignedRoute(
-                'knowledge-base.video',
+                'admin.knowledge-base.video',
                 now()->addHours(2),
                 ['article' => $article->id]
             ),
