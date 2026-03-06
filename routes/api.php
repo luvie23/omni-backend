@@ -32,11 +32,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:contractor')->group(function () {
         Route::get('/contractor/me', [ContractorController::class, 'me']);
         Route::patch('/contractor/me', [ContractorController::class, 'updateMe']);
+        Route::patch('/contractor/password', [ContractorController::class, 'updateMyPassword']);
         Route::get('/certified-people', [CertifiedPersonController::class, 'index']);
         Route::post('/certified-people', [CertifiedPersonController::class, 'store']);
         Route::patch('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'update']);
         Route::delete('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'destroy']);
         Route::post('/contractor/logo', [ContractorController::class, 'uploadLogo']);
+
     });
 
     Route::middleware('role:admin')->group(function () {
@@ -44,6 +46,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/contractors', [ContractorController::class, 'index']);
         Route::get('/contractors/{contractor}', [ContractorController::class, 'show']);
         Route::patch('/contractors/{contractor}', [ContractorController::class, 'update']);
+
+        Route::patch(
+            '/admin/contractors/{user}/password',
+            [ContractorController::class, 'updatePassword']
+        );
 
         // Get certified people for a contractor (contractors.id)
         Route::get(

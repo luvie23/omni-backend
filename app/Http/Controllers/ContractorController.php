@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Hash;
+
 
 class ContractorController extends Controller
 {
@@ -190,5 +192,52 @@ class ContractorController extends Controller
                 'service_area' => $contractor->service_area,
             ],
         ];
-}
+    }
+
+    public function updatePassword(Request $request)
+    {
+        $userId = (int) $request->route('user');
+
+
+        $user = User::findOrFail($userId);
+
+        abort_unless($user->hasRole('contractor'), 404);
+
+        $data = $request->validate([
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return response()->json([
+            'message' => 'Contractor password updated successfully.',
+        ]);
+    }
+
+    public function updateMyPassword(Request $request)
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        // Verify current password
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect.'
+            ], 422);
+        }
+
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        return response()->json([
+            'message' => 'Password updated successfully.'
+        ]);
+    }
 }
