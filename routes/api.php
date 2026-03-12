@@ -7,6 +7,7 @@ use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
 use App\Http\Controllers\KnowledgeBaseAdminController;
 use App\Http\Controllers\KnowledgeBaseController;
+use App\Http\Controllers\QuotationRequestController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -32,6 +33,8 @@ Route::get('/admin/knowledge-base/{article}/video', [KnowledgeBaseAdminControlle
 
 Route::get('/knowledge-base/{article}/video', [KnowledgeBaseController::class, 'stream'])
         ->name('knowledge-base.video');
+
+Route::post('/quotation-request', [QuotationRequestController::class, 'store']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
