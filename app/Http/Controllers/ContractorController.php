@@ -68,13 +68,63 @@ class ContractorController extends Controller
 
     public function index(Request $request)
     {
-    // Log::info('In contractors index');
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:255'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'zip' => ['nullable', 'string', 'max:20'],
+            'service_area' => ['nullable', 'string', 'max:255'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $users = User::query()
             ->role('contractor')
             ->with('contractorProfile')
-            ->paginate($request->integer('per_page', 15));
+            ->when(!empty($validated['search']), function ($query) use ($validated) {
+                $search = trim($validated['search']);
 
-        return response()->json($users->through(fn ($u) => $this->contractorPayload($u)));
+                $query->where(function ($q) use ($search) {
+                    $q->where('name', 'like', "%{$search}%")
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhereHas('contractorProfile', function ($contractorQuery) use ($search) {
+                            $contractorQuery->where('company_name', 'like', "%{$search}%")
+                                ->orWhere('city', 'like', "%{$search}%")
+                                ->orWhere('state', 'like', "%{$search}%")
+                                ->orWhere('service_area', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when(!empty($validated['company_name']), function ($query) use ($validated) {
+                $query->whereHas('contractorProfile', fn ($q) =>
+                    $q->where('company_name', 'like', '%' . $validated['company_name'] . '%')
+                );
+            })
+            ->when(!empty($validated['city']), function ($query) use ($validated) {
+                $query->whereHas('contractorProfile', fn ($q) =>
+                    $q->where('city', 'like', '%' . $validated['city'] . '%')
+                );
+            })
+            ->when(!empty($validated['state']), function ($query) use ($validated) {
+                $query->whereHas('contractorProfile', fn ($q) =>
+                    $q->where('state', 'like', '%' . $validated['state'] . '%')
+                );
+            })
+            ->when(!empty($validated['zip']), function ($query) use ($validated) {
+                $query->whereHas('contractorProfile', fn ($q) =>
+                    $q->where('zip', $validated['zip'])
+                );
+            })
+            ->when(!empty($validated['service_area']), function ($query) use ($validated) {
+                $query->whereHas('contractorProfile', fn ($q) =>
+                    $q->where('service_area', 'like', '%' . $validated['service_area'] . '%')
+                );
+            })
+            ->paginate($validated['per_page'] ?? 15);
+
+        return response()->json(
+            $users->through(fn ($u) => $this->contractorPayload($u))
+        );
     }
 
     // Admin: show contractor by contractors.id
