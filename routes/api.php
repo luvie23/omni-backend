@@ -20,9 +20,9 @@ Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
 });
 
 Route::get('/test-mail', function () {
-    Mail::raw('Test email from Laravel using Google Workspace SMTP relay.', function ($message) {
+    Mail::raw('Test email from Laravel using Google Workspace SMTP.', function ($message) {
         $message->to('luvie@lightsfordecorators.com')
-                ->subject('Laravel SMTP Relay Test');
+                ->subject('Laravel Gmail SMTP Test');
     });
 
     return 'Mail sent';
