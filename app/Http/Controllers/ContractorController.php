@@ -31,7 +31,6 @@ class ContractorController extends Controller
         $contractor = $user->contractorProfile;
 
         if (!$contractor) {
-            // In case role exists but profile doesn't yet
             $contractor = Contractor::create([
                 'user_id' => $user->id,
                 'company_name' => '',
@@ -43,12 +42,27 @@ class ContractorController extends Controller
             ]);
         }
 
+        // Validate contractor fields
         $data = $this->validateContractor($request, $partial = true);
 
+        // Validate email separately (only if provided)
+        $request->validate([
+            'email' => 'sometimes|email|unique:users,email,' . $user->id,
+        ]);
+
+        // Update contractor
         $contractor->fill($data)->save();
 
+        // Update user email if present
+        if ($request->has('email')) {
+            $user->email = $request->email;
+            $user->save();
+        }
+
         return response()->json([
-            'data' => $this->contractorPayload($user->fresh()->load('contractorProfile')),
+            'data' => $this->contractorPayload(
+                $user->fresh()->load('contractorProfile')
+            ),
         ]);
     }
 

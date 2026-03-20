@@ -123,5 +123,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/settings/distance', [AdminSettingsController::class, 'getDistance']);
         Route::patch('/admin/settings/distance', [AdminSettingsController::class, 'updateDistance']);
 
+
+        Route::post(
+            '/admin/quotation-requests/{quotation_request}/send-to-contractor/{contractor}',
+            [QuotationRequestAdminController::class, 'sendToContractor']
+        );
     });
 });

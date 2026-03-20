@@ -18,4 +18,12 @@ class QuotationRequest extends Model
         'details',
         'status'
     ];
+
+    public function contractors()
+    {
+        return $this->belongsToMany(
+            Contractor::class,
+            'contractor_quotation_request'
+        )->withPivot('sent_at')->withTimestamps();
+    }
 }

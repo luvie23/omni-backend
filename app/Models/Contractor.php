@@ -28,4 +28,12 @@ class Contractor extends Model
     {
         return $this->hasMany(\App\Models\CertifiedPerson::class);
     }
+
+    public function quotationRequests()
+    {
+        return $this->belongsToMany(
+            QuotationRequest::class,
+            'contractor_quotation_request'
+        )->withPivot('sent_at')->withTimestamps();
+    }
 }
