@@ -13,9 +13,19 @@ use App\Http\Controllers\QuotationRequestController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Mail;
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
+});
+
+Route::get('/test-mail', function () {
+    Mail::raw('Test email from Laravel using Google Workspace SMTP relay.', function ($message) {
+        $message->to('luvie@lightsfordecorators.com')
+                ->subject('Laravel SMTP Relay Test');
+    });
+
+    return 'Mail sent';
 });
 
 
