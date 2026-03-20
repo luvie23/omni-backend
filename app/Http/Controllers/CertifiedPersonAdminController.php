@@ -55,9 +55,10 @@ class CertifiedPersonAdminController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'distributor_code' => 'required|string|size:2|alpha',
         ]);
 
-        $certNumber = $this->generateCertificateNumber();
+        $certNumber = $this->generateCertificateNumber($data['distributor_code']);
 
         // extra safety: retry on extremely unlikely collisions
         $attempts = 0;
@@ -66,7 +67,7 @@ class CertifiedPersonAdminController extends Controller
             if ($attempts > 5) {
                 abort(500, 'Could not generate a unique certification number. Please try again.');
             }
-            $certNumber = $this->generateCertificateNumber();
+            $certNumber = $this->generateCertificateNumber($data['distributor_code']);
         }
 
         $person = $contractor->certifiedPeople()->create([
@@ -114,9 +115,9 @@ class CertifiedPersonAdminController extends Controller
      * Generate: OMNI-YYMM-XXXXXX
      * Example: OMNI-2602-K7M9Q2
      */
-    private function generateCertificateNumber(): string
+    private function generateCertificateNumber(string $distributorCode): string
     {
-        return 'OMNI-' . now()->format('ym') . '-' . $this->randomCode(6);
+        return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(6);
     }
 
     /**
