@@ -23,8 +23,9 @@ class DatabaseSeeder extends Seeder
         // ]);
 
         $this->call([
-            ContractorDemoSeeder::class,
-            AdminUserSeeder::class
+            // ContractorDemoSeeder::class,
+            // AdminUserSeeder::class,
+            SettingsSeeder::class
         ]);
     }
 }

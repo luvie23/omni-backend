@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\CertifiedPersonAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationVerificationController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
 use App\Http\Controllers\KnowledgeBaseAdminController;
 use App\Http\Controllers\KnowledgeBaseController;
+use App\Http\Controllers\QuotationRequestAdminController;
 use App\Http\Controllers\QuotationRequestController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
@@ -96,6 +98,20 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/admin/knowledge-base/{article}', [KnowledgeBaseAdminController::class, 'show']);
         Route::patch('/admin/knowledge-base/{article}', [KnowledgeBaseAdminController::class, 'update']);
         Route::delete('/admin/knowledge-base/{article}', [KnowledgeBaseAdminController::class, 'destroy']);
+
+        Route::get('/admin/quotation-requests', [QuotationRequestAdminController::class, 'index']);
+        Route::get('/admin/quotation-requests/{quotation_request}', [QuotationRequestAdminController::class, 'show']);
+        Route::patch('/admin/quotation-requests/{quotation_request}', [QuotationRequestAdminController::class, 'update']);
+        Route::delete('/admin/quotation-requests/{quotation_request}', [QuotationRequestAdminController::class, 'destroy']);
+
+
+        Route::get(
+            '/admin/quotation-requests/{quotation_request}/nearby-contractors',
+            [QuotationRequestAdminController::class, 'nearbyContractors']
+        );
+
+        Route::get('/admin/settings/distance', [AdminSettingsController::class, 'getDistance']);
+        Route::patch('/admin/settings/distance', [AdminSettingsController::class, 'updateDistance']);
 
     });
 });

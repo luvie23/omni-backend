@@ -21,7 +21,10 @@ class QuotationRequestController extends Controller
             'details' => 'nullable|string',
         ]);
 
-        $quote = QuotationRequest::create($data);
+        $quote = QuotationRequest::create([
+            ...$data,
+            'status' => 'new',
+        ]);
 
         return response()->json([
             'message' => 'Quotation request submitted successfully.',

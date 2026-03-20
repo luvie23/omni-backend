@@ -16,5 +16,6 @@ class QuotationRequest extends Model
         'phone_number',
         'email',
         'details',
+        'status'
     ];
 }
