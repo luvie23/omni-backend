@@ -8,6 +8,7 @@ return [
     'allowed_origins' => [
         'https://www.omnirgb.cloud',
         'https://omnirgb.cloud',
+        'hub.omnirgb.com',
         'http://localhost:5173', // optional for local dev
     ],
 
