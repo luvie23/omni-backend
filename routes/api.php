@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationVerificationController;
 use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\KnowledgeBaseAdminController;
 use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\QuotationRequestAdminController;
@@ -37,6 +38,13 @@ Route::middleware('auth:sanctum')->post('/logout', function (Request $request) {
     $request->user()->currentAccessToken()->delete();
     return response()->json(['message' => 'Logged out']);
 });
+
+//events
+Route::get('events/upcoming', [EventController::class, 'upcoming']);
+Route::get('events', [EventController::class, 'index']);
+Route::get('events/{id}', [EventController::class, 'show']);
+
+
 
 Route::get('/certifications/verify', [CertificationVerificationController::class, 'verify']);
 
@@ -128,5 +136,10 @@ Route::middleware('auth:sanctum')->group(function () {
             '/admin/quotation-requests/{quotation_request}/send-to-contractor/{contractor}',
             [QuotationRequestAdminController::class, 'sendToContractor']
         );
+
+        Route::post('events', [EventController::class, 'store']);
+        Route::put('events/{id}', [EventController::class, 'update']);
+        Route::patch('events/{id}', [EventController::class, 'update']);
+        Route::delete('events/{id}', [EventController::class, 'destroy']);
     });
 });
