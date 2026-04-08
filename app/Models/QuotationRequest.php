@@ -26,4 +26,9 @@ class QuotationRequest extends Model
             'contractor_quotation_request'
         )->withPivot('sent_at')->withTimestamps();
     }
+
+    public function zipCode()
+    {
+        return $this->belongsTo(\App\Models\ZipCode::class, 'zip', 'zip');
+    }
 }

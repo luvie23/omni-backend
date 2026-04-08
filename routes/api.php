@@ -6,11 +6,13 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationVerificationController;
 use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
+use App\Http\Controllers\ContractorMapController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\KnowledgeBaseAdminController;
 use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\QuotationRequestAdminController;
 use App\Http\Controllers\QuotationRequestController;
+use App\Http\Controllers\QuotationRequestMapController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -82,6 +84,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/contractors/{contractor}', [ContractorController::class, 'show']);
         Route::patch('/contractors/{contractor}', [ContractorController::class, 'update']);
 
+        Route::get('/contractor-coords', [ContractorMapController::class, 'index']);
+        Route::get('/quotation-coords', [QuotationRequestMapController::class, 'index']);
+
         Route::patch(
             '/admin/contractors/{user}/password',
             [ContractorController::class, 'updatePassword']
@@ -141,5 +146,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('events/{id}', [EventController::class, 'update']);
         Route::patch('events/{id}', [EventController::class, 'update']);
         Route::delete('events/{id}', [EventController::class, 'destroy']);
+
+
     });
 });
