@@ -4,119 +4,57 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\File;
 use ZipArchive;
 
 class ShopifyImageDownloadController extends Controller
 {
-   public function download(Request $request)
-{
-    $request->validate([
-        'csv' => ['required', 'file', 'mimes:csv,txt'],
-    ]);
+    public function download(Request $request)
+    {
+        $request->validate([
+            'csv' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
 
-    $csvPath = $request->file('csv')->getRealPath();
+        $csvPath = $request->file('csv')->getRealPath();
 
-    $batchId = uniqid('shopify_images_', true);
+        $zipFileName = 'shopify-images-' . time() . '.zip';
+        $zipPath = storage_path('app/' . $zipFileName);
 
-    $tempDir = storage_path("app/temp/{$batchId}");
-    File::ensureDirectoryExists($tempDir);
+        $zip = new ZipArchive;
 
-    $zipFileName = "shopify-images-{$batchId}.zip";
-    $zipPath = storage_path("app/{$zipFileName}");
-
-    $zip = new ZipArchive;
-
-    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-        File::deleteDirectory($tempDir);
-
-        return response()->json([
-            'message' => 'Could not create ZIP file.',
-        ], 500);
-    }
-
-    $handle = fopen($csvPath, 'r');
-
-    if (!$handle) {
-        $zip->close();
-        File::delete($zipPath);
-        File::deleteDirectory($tempDir);
-
-        return response()->json([
-            'message' => 'Could not read CSV file.',
-        ], 500);
-    }
-
-    $usedFilenames = [];
-    $downloadedFiles = [];
-
-    while (($row = fgetcsv($handle)) !== false) {
-        $url = trim($row[0] ?? '');
-
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            continue;
+        if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+            return response()->json(['message' => 'Could not create ZIP file.'], 500);
         }
 
-        $path = parse_url($url, PHP_URL_PATH);
-        $originalFilename = basename($path);
+        $handle = fopen($csvPath, 'r');
 
-        if (!$originalFilename || !str_contains($originalFilename, '.')) {
-            $originalFilename = uniqid('image_', true) . '.jpg';
-        }
+        while (($row = fgetcsv($handle)) !== false) {
+            $url = trim($row[0] ?? '');
 
-        $safeFilename = preg_replace('/[^A-Za-z0-9._-]/', '_', $originalFilename);
+            if (!filter_var($url, FILTER_VALIDATE_URL)) {
+                continue;
+            }
 
-        if (isset($usedFilenames[$safeFilename])) {
-            $info = pathinfo($safeFilename);
-
-            $name = $info['filename'] ?? 'image';
-            $extension = isset($info['extension']) ? '.' . $info['extension'] : '';
-
-            $safeFilename = $name . '_' . uniqid() . $extension;
-        }
-
-        $usedFilenames[$safeFilename] = true;
-
-        $tempFilePath = $tempDir . DIRECTORY_SEPARATOR . $safeFilename;
-
-        try {
-            $response = Http::
-                get($url);
+            $response = Http::get($url);
 
             if (!$response->successful()) {
-                File::delete($tempFilePath);
                 continue;
             }
 
-            if (!File::exists($tempFilePath) || File::size($tempFilePath) === 0) {
-                File::delete($tempFilePath);
-                continue;
+            $path = parse_url($url, PHP_URL_PATH);
+            $filename = basename($path);
+
+            if (!$filename) {
+                $filename = uniqid('image_') . '.jpg';
             }
 
-            $zip->addFile($tempFilePath, $safeFilename);
-            $downloadedFiles[] = $tempFilePath;
-        } catch (\Throwable $e) {
-            File::delete($tempFilePath);
-            continue;
+            $zip->addFromString($filename, $response->body());
         }
+
+        fclose($handle);
+        $zip->close();
+
+        return response()
+            ->download($zipPath, 'shopify-images.zip')
+            ->deleteFileAfterSend(true);
     }
-
-    fclose($handle);
-    $zip->close();
-
-    File::delete($downloadedFiles);
-    File::deleteDirectory($tempDir);
-
-    if (!File::exists($zipPath) || File::size($zipPath) === 0) {
-        File::delete($zipPath);
-
-        return response()->json([
-            'message' => 'No valid images were downloaded.',
-        ], 422);
-    }
-
-    return response()
-        ->download($zipPath, 'shopify-images.zip')
-        ->deleteFileAfterSend(true);
-}
 }
