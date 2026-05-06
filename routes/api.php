@@ -13,14 +13,18 @@ use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\QuotationRequestAdminController;
 use App\Http\Controllers\QuotationRequestController;
 use App\Http\Controllers\QuotationRequestMapController;
+use App\Http\Controllers\ShopifyImageDownloadController;
 use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Mail;
 
+
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
 });
+
+Route::post('/download-shopify-images', [ShopifyImageDownloadController::class, 'download']);
 
 Route::get('/test-mail', function () {
     Mail::raw('Test email from Laravel using Google Workspace SMTP.', function ($message) {
