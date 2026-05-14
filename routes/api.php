@@ -151,6 +151,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('events/{id}', [EventController::class, 'update']);
         Route::delete('events/{id}', [EventController::class, 'destroy']);
 
+        // register a lot of contractors
+        Route::post('/register/contractors/import-csv', [AuthController::class, 'importContractorsCsv']);
+
 
     });
 });
