@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 class Contractor extends Model
 {
     protected $fillable = [
-        'user_id',
         'company_name',
         'contact_number',
         'company_website_url',
@@ -21,7 +20,7 @@ class Contractor extends Model
 
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+       return $this->hasMany(\App\Models\User::class);
     }
 
     public function certifiedPeople()

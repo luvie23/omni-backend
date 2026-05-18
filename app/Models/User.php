@@ -23,6 +23,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'contractor_id',
     ];
 
     /**
@@ -37,7 +38,7 @@ class User extends Authenticatable
 
     public function contractorProfile()
     {
-        return $this->hasOne(\App\Models\Contractor::class);
+        return $this->belongsTo(\App\Models\Contractor::class, 'contractor_id');
     }
 
     /**

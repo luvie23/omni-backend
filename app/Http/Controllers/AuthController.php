@@ -9,6 +9,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
+use App\Mail\ContractorWelcomeMail;
+use App\Models\CertifiedPerson;
+use Illuminate\Support\Facades\Mail;
+
 class AuthController extends Controller
 {
 
@@ -105,7 +109,7 @@ class AuthController extends Controller
     }
 
 
-    public function importContractorsCsv(Request $request)
+   public function importContractorsCsv(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:10240',
@@ -127,7 +131,12 @@ class AuthController extends Controller
             ], 422);
         }
 
-        // normalize headers
+        /*
+        |--------------------------------------------------------------------------
+        | Normalize headers
+        |--------------------------------------------------------------------------
+        */
+
         $header = array_map(fn ($h) => strtolower(trim($h)), $header);
 
         $requiredHeaders = [
@@ -158,18 +167,31 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
+
             $rowIndex = 1;
 
             while (($row = fgetcsv($file)) !== false) {
+
                 $rowIndex++;
 
-                // skip empty rows
+                /*
+                |--------------------------------------------------------------------------
+                | Skip empty rows
+                |--------------------------------------------------------------------------
+                */
+
                 if (count(array_filter($row)) === 0) {
                     continue;
                 }
 
-                // column mismatch
+                /*
+                |--------------------------------------------------------------------------
+                | Column mismatch
+                |--------------------------------------------------------------------------
+                */
+
                 if (count($row) !== count($header)) {
+
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => null,
@@ -177,73 +199,167 @@ class AuthController extends Controller
                             'row' => ['Column count does not match header count.'],
                         ],
                     ];
+
                     continue;
                 }
 
                 $data = array_combine($header, $row);
 
+                /*
+                |--------------------------------------------------------------------------
+                | Validate row
+                |--------------------------------------------------------------------------
+                */
+
                 $validator = Validator::make($data, [
+
                     'name' => 'required|string|max:255',
+
                     'email' => 'required|email|unique:users,email',
 
                     'company_name' => 'required|string|max:255',
+
                     'contact_number' => 'nullable|string|max:20',
+
                     'company_website_url' => 'nullable|string|max:255',
+
                     'mailing_address' => 'nullable|string|max:255',
+
                     'city' => 'nullable|string|max:100',
+
                     'state' => 'nullable|string|size:2',
+
                     'zip' => 'required|string|max:10',
+
                     'service_area' => 'required|string|max:255',
                 ]);
 
                 if ($validator->fails()) {
+
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => $data['email'] ?? null,
                         'errors' => $validator->errors()->toArray(),
                     ];
+
                     continue;
                 }
 
                 $validated = $validator->validated();
 
                 try {
-                    $companyPart = ucfirst(strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $validated['company_name'])));
-                    $statePart = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $validated['state']));
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Generate password
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $companyPart = ucfirst(strtolower(
+                        preg_replace('/[^a-zA-Z0-9]/', '', $validated['company_name'])
+                    ));
+
+                    $statePart = strtolower(
+                        preg_replace('/[^a-zA-Z0-9]/', '', $validated['state'])
+                    );
 
                     $password = $companyPart . $statePart . '!2026';
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Find existing contractor OR create one
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $contractor = Contractor::firstOrCreate(
+
+                        [
+                            'company_name' => trim($validated['company_name']),
+                        ],
+
+                        [
+                            'contact_number' => $validated['contact_number'] ?? null,
+
+                            'company_website_url' => $validated['company_website_url'] ?? null,
+
+                            'mailing_address' => $validated['mailing_address'] ?? null,
+
+                            'city' => $validated['city'] ?? null,
+
+                            'state' => strtoupper($validated['state']),
+
+                            'zip' => $validated['zip'],
+
+                            'service_area' => $validated['service_area'],
+                        ]
+                    );
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Create user
+                    |--------------------------------------------------------------------------
+                    */
 
                     $user = User::create([
                         'name' => $validated['name'],
                         'email' => $validated['email'],
                         'password' => Hash::make($password),
+                        'contractor_id' => $contractor->id,
                     ]);
 
                     $user->assignRole('contractor');
 
-                    Contractor::create([
-                        'user_id' => $user->id,
-                        'company_name' => $validated['company_name'],
-                        'contact_number' => 'required|string|max:20',
-                        'company_website_url' => $validated['company_website_url'] ?? null,
-                        'mailing_address' => $validated['mailing_address'],
-                        'city' => $validated['city'],
-                        'state' => strtoupper($validated['state']),
-                        'zip' => $validated['zip'],
-                        'service_area' => $validated['service_area'],
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Create certified person
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $certNumber = $this->generateCertificateNumber('NA');
+
+                    $attempts = 0;
+
+                    while (
+                        CertifiedPerson::where(
+                            'certification_number',
+                            $certNumber
+                        )->exists()
+                    ) {
+
+                        $attempts++;
+
+                        if ($attempts > 5) {
+                            throw new \Exception(
+                                'Could not generate a unique certification number.'
+                            );
+                        }
+
+                        $certNumber = $this->generateCertificateNumber('NA');
+                    }
+
+                    $contractor->certifiedPeople()->create([
+                        'name' => $validated['name'],
+                        'certification_number' => $certNumber,
                     ]);
+
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Track created users
+                    |--------------------------------------------------------------------------
+                    */
 
                     $created++;
 
                     $createdUsers[] = [
                         'name' => $validated['name'],
                         'email' => $validated['email'],
-                        'company_name' => $validated['company_name'],
-                        'city' => $validated['city'],
+                        'company_name' => $contractor->company_name,
+                        'city' => $contractor->city,
                         'initial_password' => $password,
                     ];
 
                 } catch (\Throwable $e) {
+
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => $data['email'] ?? null,
@@ -255,7 +371,20 @@ class AuthController extends Controller
             }
 
             fclose($file);
+
             DB::commit();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Send emails after successful commit
+            |--------------------------------------------------------------------------
+            */
+
+            foreach ($createdUsers as $createdUser) {
+
+                Mail::to($createdUser['email'])
+                    ->send(new ContractorWelcomeMail($createdUser));
+            }
 
             return response()->json([
                 'message' => 'Import completed.',
@@ -266,6 +395,7 @@ class AuthController extends Controller
             ], 200);
 
         } catch (\Throwable $e) {
+
             DB::rollBack();
 
             if (is_resource($file)) {
@@ -282,31 +412,48 @@ class AuthController extends Controller
     public function updateMyPassword(Request $request)
     {
 
-    $user = $request->user();
+        $user = $request->user();
 
-    $data = $request->validate([
-        'current_password' => 'required|string',
-        'password' => 'required|string|min:8|confirmed',
-    ]);
+        $data = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
 
 
-    if (!Hash::check($data['current_password'], $user->password)) {
+        if (!Hash::check($data['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect.'
+            ], 422);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($data['password']),
+        ]);
+
+        $user->tokens()
+        ->where('id', '!=', $request->user()->currentAccessToken()->id)
+        ->delete();
+
         return response()->json([
-            'message' => 'Current password is incorrect.'
-        ], 422);
+            'message' => 'Password updated successfully.'
+        ]);
     }
 
-    // Update password
-    $user->update([
-        'password' => Hash::make($data['password']),
-    ]);
+    private function generateCertificateNumber(string $distributorCode): string
+    {
+        return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(6);
+    }
 
-    $user->tokens()
-    ->where('id', '!=', $request->user()->currentAccessToken()->id)
-    ->delete();
+        private function randomCode(int $length = 6): string
+    {
+        $characters = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+        $code = '';
 
-    return response()->json([
-        'message' => 'Password updated successfully.'
-    ]);
-}
+        for ($i = 0; $i < $length; $i++) {
+            $code .= $characters[random_int(0, strlen($characters) - 1)];
+        }
+
+        return $code;
+    }
 }
