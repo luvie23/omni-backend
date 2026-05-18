@@ -91,6 +91,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/contractor-coords', [ContractorMapController::class, 'index']);
         Route::get('/quotation-coords', [QuotationRequestMapController::class, 'index']);
 
+        Route::post('/admin/updatepassword', [AuthController::class, 'updateMyPassword']);
+
         Route::patch(
             '/admin/contractors/{user}/password',
             [ContractorController::class, 'updatePassword']
