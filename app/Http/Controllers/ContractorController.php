@@ -53,11 +53,11 @@ class ContractorController extends Controller
         // Update contractor
         $contractor->fill($data)->save();
 
-        // Update user email if present
-        if ($request->has('email')) {
-            $user->email = $request->email;
-            $user->save();
-        }
+        // // Update user email if present
+        // if ($request->has('email')) {
+        //     $user->email = $request->email;
+        //     $user->save();
+        // }
 
         return response()->json([
             'data' => $this->contractorPayload(
@@ -195,8 +195,9 @@ class ContractorController extends Controller
 
         return $request->validate([
             'company_name' => $sometimes . 'required|string|max:255',
+            'email' => $sometimes . 'nullable|email|max:255',
             'contact_number' => $sometimes . 'nullable|string|max:30',
-            'company_website_url' => $sometimes . 'nullable|url|max:255',
+            'company_website_url' => $sometimes . 'nullable|string|max:255',
             'mailing_address' => $sometimes . 'required|string|max:255',
             'city' => $sometimes . 'required|string|max:100',
             'state' => $sometimes . 'required|string|size:2',
@@ -216,7 +217,7 @@ class ContractorController extends Controller
             'user_id' => $u->id,
 
             'name' => $u->name,
-            'email' => $u->email,
+            'email' => $contractor?->email,
             'roles' => $u->getRoleNames(),
 
             'contractor_profile' => [
@@ -303,5 +304,17 @@ class ContractorController extends Controller
         return response()->json([
             'message' => 'Password updated successfully.'
         ]);
+    }
+
+    public function getQuotations(Request $request)
+    {
+        $contractor = $request->user()->contractorProfile;
+
+        $quotations = $contractor
+            ->quotationRequests()
+            ->latest()
+            ->paginate(10);
+
+        return response()->json($quotations);
     }
 }

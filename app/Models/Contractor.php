@@ -8,6 +8,7 @@ class Contractor extends Model
 {
     protected $fillable = [
         'company_name',
+        'email',
         'contact_number',
         'company_website_url',
         'logo_path',
@@ -18,7 +19,7 @@ class Contractor extends Model
         'service_area',
     ];
 
-    public function user()
+    public function users()
     {
        return $this->hasMany(\App\Models\User::class);
     }

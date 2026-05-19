@@ -71,6 +71,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/contractor/me', [ContractorController::class, 'updateMe']);
         Route::patch('/contractor/password', [ContractorController::class, 'updateMyPassword']);
         Route::get('/certified-people', [CertifiedPersonController::class, 'index']);
+        Route::get('/contractor/quotation-requests', [ContractorController::class, 'getQuotations']);
         // Route::post('/certified-people', [CertifiedPersonController::class, 'store']);
         // Route::patch('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'update']);
         // Route::delete('/certified-people/{certifiedPerson}', [CertifiedPersonController::class, 'destroy']);
@@ -98,7 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
             [ContractorController::class, 'updatePassword']
         );
 
-        // Get certified people for a contractor (contractors.id)
+        // Get  ed people for a contractor (contractors.id)
         Route::get(
             '/admin/contractors/{contractor}/certified-people',
             [CertifiedPersonAdminController::class, 'index']

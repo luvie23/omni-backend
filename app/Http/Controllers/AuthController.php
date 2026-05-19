@@ -68,18 +68,11 @@ class AuthController extends Controller
         ]);
 
         $user = DB::transaction(function () use ($data) {
-            $user = User::create([
-                'name' => $data['name'],
-                'email' => $data['email'],
-                'password' => Hash::make($data['password']),
-            ]);
 
-            // requires roles seeded already
-            $user->assignRole('contractor');
 
-            Contractor::create([
-                'user_id' => $user->id,
+            $contractor = Contractor::create([
                 'company_name' => $data['company_name'],
+                'email' => $data['email'],
                 'contact_number' => $data['contact_number'],
                 'company_website_url' => $data['company_website_url'] ?? null,
                 'mailing_address' => $data['mailing_address'],
@@ -88,6 +81,16 @@ class AuthController extends Controller
                 'zip' => $data['zip'],
                 'service_area' => $data['service_area'],
             ]);
+
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'contractor_id' => $contractor->id,
+            ]);
+
+            // requires roles seeded already
+            $user->assignRole('contractor');
 
             return $user;
         });
@@ -278,6 +281,7 @@ class AuthController extends Controller
                         ],
 
                         [
+                            'email' => $validated['email'],
                             'contact_number' => $validated['contact_number'] ?? null,
 
                             'company_website_url' => $validated['company_website_url'] ?? null,
@@ -311,7 +315,7 @@ class AuthController extends Controller
 
                     /*
                     |--------------------------------------------------------------------------
-                    | Create certified person
+                    | Generate certification number
                     |--------------------------------------------------------------------------
                     */
 
@@ -337,7 +341,13 @@ class AuthController extends Controller
                         $certNumber = $this->generateCertificateNumber('NA');
                     }
 
-                    $contractor->certifiedPeople()->create([
+                    /*
+                    |--------------------------------------------------------------------------
+                    | Create certified person
+                    |--------------------------------------------------------------------------
+                    */
+
+                    $certifiedPerson = $contractor->certifiedPeople()->create([
                         'name' => $validated['name'],
                         'certification_number' => $certNumber,
                     ]);
@@ -356,6 +366,7 @@ class AuthController extends Controller
                         'company_name' => $contractor->company_name,
                         'city' => $contractor->city,
                         'initial_password' => $password,
+                        'certification_number' => $certifiedPerson->certification_number,
                     ];
 
                 } catch (\Throwable $e) {

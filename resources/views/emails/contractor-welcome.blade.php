@@ -5,7 +5,10 @@
 Your contractor account has been created.
 
 **Login Email:** {{ $contractor['email'] }}
+
 **Temporary Password:** {{ $contractor['initial_password'] }}
+
+**Certification Number:** {{ $contractor['certification_number'] }}
 
 Please log in and change your password as soon as possible.
 

@@ -12,7 +12,6 @@ class ContractorMapController extends Controller
         $contractors = Contractor::query()
             ->select([
                 'id',
-                'user_id',
                 'company_name',
                 'city',
                 'state',
