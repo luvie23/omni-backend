@@ -146,37 +146,39 @@ class ResourceController extends Controller
     /**
      * View/stream the file.
      */
-   public function view(Resource $resource)
-{
-    $disk = Storage::disk('private');
+    public function view(Resource $resource)
+    {
+        $disk = Storage::disk('private');
 
-    if (!$disk->exists($resource->file_path)) {
-        return response()->json([
-            'message' => 'File not found.',
-        ], 404);
+        if (!$disk->exists($resource->file_path)) {
+            return response()->json([
+                'message' => 'File not found.',
+            ], 404);
+        }
+
+        $filePath = $disk->path($resource->file_path);
+
+        return response()->file($filePath, [
+            'Content-Type' => $resource->file_type,
+            'Content-Disposition' => 'inline; filename="' . $resource->file_name . '"',
+        ]);
     }
-
-    $filePath = $disk->path($resource->file_path);
-
-    return response()->file($filePath, [
-        'Content-Type' => $resource->file_type,
-        'Content-Disposition' => 'inline; filename="' . $resource->file_name . '"',
-    ]);
-}
 
     /**
      * Download the file.
      */
     public function download(Resource $resource)
     {
-        if (!Storage::disk('private')->exists($resource->file_path)) {
+        $disk = Storage::disk('private');
+
+        if (!$disk->exists($resource->file_path)) {
             return response()->json([
                 'message' => 'File not found.',
             ], 404);
         }
 
-        return Storage::disk('private')->download(
-            $resource->file_path,
+        return response()->download(
+            $disk->path($resource->file_path),
             $resource->file_name
         );
     }
