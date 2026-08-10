@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminSettingsController;
+use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\CertifiedPersonAdminController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CertificationVerificationController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Mail;
+
 
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
@@ -65,6 +67,28 @@ Route::post('/quotation-request', [QuotationRequestController::class, 'store']);
 
 Route::middleware('auth:sanctum')->group(function () {
 
+
+    //resources
+    Route::get('/resources', [
+        ResourceController::class,
+        'index'
+    ]);
+
+    Route::get('/resources/{resource}', [
+        ResourceController::class,
+        'show'
+    ]);
+
+    Route::get('/resources/{resource}/view', [
+        ResourceController::class,
+        'view'
+    ]);
+
+    Route::get('/resources/{resource}/download', [
+        ResourceController::class,
+        'download'
+    ]);
+
     // contractor-only endpoints
     Route::middleware('role:contractor')->group(function () {
         Route::get('/contractor/me', [ContractorController::class, 'me']);
@@ -84,6 +108,30 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::middleware('role:admin')->group(function () {
+
+
+        //resources
+        Route::post('/resources', [
+            ResourceController::class,
+            'store'
+        ]);
+
+        Route::put('/resources/{resource}', [
+            ResourceController::class,
+            'update'
+        ]);
+
+        Route::post('/resources/{resource}/file', [
+            ResourceController::class,
+            'replaceFile'
+        ]);
+
+        Route::delete('/resources/{resource}', [
+            ResourceController::class,
+            'destroy'
+        ]);
+
+
         Route::post('/register/contractor', [AuthController::class, 'registerContractor']);
         Route::get('/contractors', [ContractorController::class, 'index']);
         Route::get('/contractors/{contractor}', [ContractorController::class, 'show']);
