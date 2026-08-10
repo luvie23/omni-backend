@@ -60,8 +60,8 @@ public function store(Request $request)
         'file' => [
             'required',
             'file',
-            'max:51200', // 50 MB
-            'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,jpg,jpeg,png',
+            'max:2097152', // 50 MB
+            'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,jpg,jpeg,png,mp4,webm,mov',
         ],
     ]);
 
