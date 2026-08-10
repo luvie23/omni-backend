@@ -74,17 +74,17 @@ Route::middleware('auth:sanctum')->group(function () {
         'index'
     ]);
 
-    Route::get('/resources/{resource}', [
+    Route::get('/resources/{id}', [
         ResourceController::class,
         'show'
     ]);
 
-    Route::get('/resources/{resource}/view', [
+    Route::get('/resources/{id}/view', [
         ResourceController::class,
         'view'
     ]);
 
-    Route::get('/resources/{resource}/download', [
+    Route::get('/resources/{id}/download', [
         ResourceController::class,
         'download'
     ]);
@@ -116,17 +116,17 @@ Route::middleware('auth:sanctum')->group(function () {
             'store'
         ]);
 
-        Route::put('/resources/{resource}', [
+        Route::post('/resources/{id}', [
             ResourceController::class,
             'update'
         ]);
 
-        Route::post('/resources/{resource}/file', [
+        Route::post('/resources/{id}/file', [
             ResourceController::class,
             'replaceFile'
         ]);
 
-        Route::delete('/resources/{resource}', [
+        Route::delete('/resources/{id}', [
             ResourceController::class,
             'destroy'
         ]);
