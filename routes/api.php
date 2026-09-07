@@ -9,6 +9,7 @@ use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
 use App\Http\Controllers\ContractorMapController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\KnowledgeBaseAdminController;
 use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\QuotationRequestAdminController;
@@ -20,10 +21,51 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Mail;
 
+use App\Services\GoogleDriveService;
+
+Route::get('/google-drive/folder-info/{folderId}', function (
+    string $folderId,
+    \App\Services\GoogleDriveService $driveService
+) {
+    try {
+        $folder = $driveService->getFolder($folderId);
+
+        return response()->json([
+            'success' => true,
+            'folder' => [
+                'id' => $folder->getId(),
+                'name' => $folder->getName(),
+                'mime_type' => $folder->getMimeType(),
+                'url' => $folder->getWebViewLink(),
+                'parents' => $folder->getParents(),
+            ],
+        ]);
+    } catch (\Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+        ], 500);
+    }
+});
+
 
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
     return $request->user();
+});
+
+
+Route::get('/google-drive/who-am-i', function (
+    \App\Services\GoogleDriveService $driveService
+) {
+    $about = $driveService->getAbout();
+
+    return response()->json([
+        'user' => [
+            'display_name' => $about->getUser()->getDisplayName(),
+            'email' => $about->getUser()->getEmailAddress(),
+        ],
+    ]);
 });
 
 Route::post('/download-shopify-images', [ShopifyImageDownloadController::class, 'download']);
@@ -66,6 +108,11 @@ Route::post('/quotation-request', [QuotationRequestController::class, 'store']);
 
 
 Route::middleware('auth:sanctum')->group(function () {
+
+    Route::get('/google-drive/folder/{folderId?}', [
+        GoogleDriveController::class,
+        'folder',
+    ]);
 
 
     //resources
