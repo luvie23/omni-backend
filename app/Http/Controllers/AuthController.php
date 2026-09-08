@@ -391,19 +391,19 @@ class AuthController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            foreach ($createdUsers as $createdUser) {
+            // foreach ($createdUsers as $createdUser) {
 
-                Mail::to($createdUser['email'])
-                    ->send(new ContractorWelcomeMail($createdUser));
-            }
+            //     Mail::to($createdUser['email'])
+            //         ->send(new ContractorWelcomeMail($createdUser));
+            // }
 
-            return response()->json([
-                'message' => 'Import completed.',
-                'created' => $created,
-                'failed' => count($errors),
-                'users' => $createdUsers,
-                'errors' => $errors,
-            ], 200);
+            // return response()->json([
+            //     'message' => 'Import completed.',
+            //     'created' => $created,
+            //     'failed' => count($errors),
+            //     'users' => $createdUsers,
+            //     'errors' => $errors,
+            // ], 200);
 
         } catch (\Throwable $e) {
 

@@ -70,14 +70,14 @@ Route::get('/google-drive/who-am-i', function (
 
 Route::post('/download-shopify-images', [ShopifyImageDownloadController::class, 'download']);
 
-Route::get('/test-mail', function () {
-    Mail::raw('Test email from Laravel using Google Workspace SMTP.', function ($message) {
-        $message->to('luvie@lightsfordecorators.com')
-                ->subject('Laravel Gmail SMTP Test');
-    });
+// Route::get('/test-mail', function () {
+//     Mail::raw('Test email from Laravel using Google Workspace SMTP.', function ($message) {
+//         $message->to('luvie@lightsfordecorators.com')
+//                 ->subject('Laravel Gmail SMTP Test');
+//     });
 
-    return 'Mail sent';
-});
+//     return 'Mail sent';
+// });
 
 
 Route::get('/test', [TestController::class, 'index']);
@@ -181,6 +181,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::post('/register/contractor', [AuthController::class, 'registerContractor']);
         Route::get('/contractors', [ContractorController::class, 'index']);
+        Route::get('/contractors-name-id', [ContractorController::class, 'nameId']);
         Route::get('/contractors/{contractor}', [ContractorController::class, 'show']);
         Route::patch('/contractors/{contractor}', [ContractorController::class, 'update']);
 

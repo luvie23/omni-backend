@@ -127,6 +127,12 @@ class ContractorController extends Controller
         );
     }
 
+    public function nameId()
+    {
+        return response()->json(
+        Contractor::select('id', 'company_name')->get());
+    }
+
     // Admin: show contractor by contractors.id
     public function show(Contractor $contractor)
     {

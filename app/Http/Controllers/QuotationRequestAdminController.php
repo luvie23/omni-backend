@@ -182,9 +182,9 @@ class QuotationRequestAdminController extends Controller
             ->exists();
 
         // Send mail to contractor email
-        Mail::to($contractor->email)->send(
-            new QuotationRequestSentToContractorMail($quote, $contractor)
-        );
+        // Mail::to($contractor->email)->send(
+        //     new QuotationRequestSentToContractorMail($quote, $contractor)
+        // );
 
         if ($alreadySent) {
 
