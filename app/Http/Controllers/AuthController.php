@@ -112,7 +112,7 @@ class AuthController extends Controller
     }
 
 
-   public function importContractorsCsv(Request $request)
+    public function importContractorsCsv(Request $request)
     {
         $request->validate([
             'file' => 'required|file|mimes:csv,txt|max:10240',
@@ -157,6 +157,8 @@ class AuthController extends Controller
         $missingHeaders = array_diff($requiredHeaders, $header);
 
         if (!empty($missingHeaders)) {
+            fclose($file);
+
             return response()->json([
                 'message' => 'CSV is missing required columns.',
                 'missing_columns' => array_values($missingHeaders),
@@ -167,14 +169,20 @@ class AuthController extends Controller
         $errors = [];
         $createdUsers = [];
 
+        /*
+        |--------------------------------------------------------------------------
+        | Track emails already seen in this CSV
+        |--------------------------------------------------------------------------
+        */
+
+        $seenEmails = [];
+
         DB::beginTransaction();
 
         try {
-
             $rowIndex = 1;
 
             while (($row = fgetcsv($file)) !== false) {
-
                 $rowIndex++;
 
                 /*
@@ -194,12 +202,13 @@ class AuthController extends Controller
                 */
 
                 if (count($row) !== count($header)) {
-
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => null,
                         'errors' => [
-                            'row' => ['Column count does not match header count.'],
+                            'row' => [
+                                'Column count does not match header count.',
+                            ],
                         ],
                     ];
 
@@ -210,12 +219,40 @@ class AuthController extends Controller
 
                 /*
                 |--------------------------------------------------------------------------
+                | Check duplicate email within CSV
+                |--------------------------------------------------------------------------
+                */
+
+                $normalizedEmail = strtolower(trim($data['email'] ?? ''));
+
+                if (
+                    $normalizedEmail !== '' &&
+                    isset($seenEmails[$normalizedEmail])
+                ) {
+                    $errors[] = [
+                        'row' => $rowIndex,
+                        'email' => $data['email'] ?? null,
+                        'errors' => [
+                            'email' => [
+                                "Duplicate email in CSV. First appeared on row {$seenEmails[$normalizedEmail]}.",
+                            ],
+                        ],
+                    ];
+
+                    continue;
+                }
+
+                if ($normalizedEmail !== '') {
+                    $seenEmails[$normalizedEmail] = $rowIndex;
+                }
+
+                /*
+                |--------------------------------------------------------------------------
                 | Validate row
                 |--------------------------------------------------------------------------
                 */
 
                 $validator = Validator::make($data, [
-
                     'name' => 'required|string|max:255',
 
                     'email' => 'required|email|unique:users,email',
@@ -238,7 +275,6 @@ class AuthController extends Controller
                 ]);
 
                 if ($validator->fails()) {
-
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => $data['email'] ?? null,
@@ -251,7 +287,6 @@ class AuthController extends Controller
                 $validated = $validator->validated();
 
                 try {
-
                     /*
                     |--------------------------------------------------------------------------
                     | Generate password
@@ -259,11 +294,19 @@ class AuthController extends Controller
                     */
 
                     $companyPart = ucfirst(strtolower(
-                        preg_replace('/[^a-zA-Z0-9]/', '', $validated['company_name'])
+                        preg_replace(
+                            '/[^a-zA-Z0-9]/',
+                            '',
+                            $validated['company_name']
+                        )
                     ));
 
                     $statePart = strtolower(
-                        preg_replace('/[^a-zA-Z0-9]/', '', $validated['state'])
+                        preg_replace(
+                            '/[^a-zA-Z0-9]/',
+                            '',
+                            $validated['state']
+                        )
                     );
 
                     $password = $companyPart . $statePart . '!2026';
@@ -275,26 +318,34 @@ class AuthController extends Controller
                     */
 
                     $contractor = Contractor::firstOrCreate(
-
                         [
-                            'company_name' => trim($validated['company_name']),
+                            'company_name' => trim(
+                                $validated['company_name']
+                            ),
                         ],
-
                         [
                             'email' => $validated['email'],
-                            'contact_number' => $validated['contact_number'] ?? null,
 
-                            'company_website_url' => $validated['company_website_url'] ?? null,
+                            'contact_number' =>
+                                $validated['contact_number'] ?? null,
 
-                            'mailing_address' => $validated['mailing_address'] ?? null,
+                            'company_website_url' =>
+                                $validated['company_website_url'] ?? null,
 
-                            'city' => $validated['city'] ?? null,
+                            'mailing_address' =>
+                                $validated['mailing_address'] ?? null,
 
-                            'state' => strtoupper($validated['state']),
+                            'city' =>
+                                $validated['city'] ?? null,
 
-                            'zip' => $validated['zip'],
+                            'state' =>
+                                strtoupper($validated['state']),
 
-                            'service_area' => $validated['service_area'],
+                            'zip' =>
+                                $validated['zip'],
+
+                            'service_area' =>
+                                $validated['service_area'],
                         ]
                     );
 
@@ -329,7 +380,6 @@ class AuthController extends Controller
                             $certNumber
                         )->exists()
                     ) {
-
                         $attempts++;
 
                         if ($attempts > 5) {
@@ -338,7 +388,8 @@ class AuthController extends Controller
                             );
                         }
 
-                        $certNumber = $this->generateCertificateNumber('NA');
+                        $certNumber =
+                            $this->generateCertificateNumber('NA');
                     }
 
                     /*
@@ -347,10 +398,11 @@ class AuthController extends Controller
                     |--------------------------------------------------------------------------
                     */
 
-                    $certifiedPerson = $contractor->certifiedPeople()->create([
-                        'name' => $validated['name'],
-                        'certification_number' => $certNumber,
-                    ]);
+                    $certifiedPerson =
+                        $contractor->certifiedPeople()->create([
+                            'name' => $validated['name'],
+                            'certification_number' => $certNumber,
+                        ]);
 
                     /*
                     |--------------------------------------------------------------------------
@@ -366,16 +418,17 @@ class AuthController extends Controller
                         'company_name' => $contractor->company_name,
                         'city' => $contractor->city,
                         'initial_password' => $password,
-                        'certification_number' => $certifiedPerson->certification_number,
+                        'certification_number' =>
+                            $certifiedPerson->certification_number,
                     ];
-
                 } catch (\Throwable $e) {
-
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => $data['email'] ?? null,
                         'errors' => [
-                            'exception' => [$e->getMessage()],
+                            'exception' => [
+                                $e->getMessage(),
+                            ],
                         ],
                     ];
                 }
@@ -392,7 +445,6 @@ class AuthController extends Controller
             */
 
             foreach ($createdUsers as $createdUser) {
-
                 Mail::to('luvie@lightsfordecorators.com')
                     ->send(new ContractorWelcomeMail($createdUser));
             }
@@ -404,9 +456,7 @@ class AuthController extends Controller
                 'users' => $createdUsers,
                 'errors' => $errors,
             ], 200);
-
         } catch (\Throwable $e) {
-
             DB::rollBack();
 
             if (is_resource($file)) {
