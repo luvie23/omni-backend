@@ -503,7 +503,7 @@ class AuthController extends Controller
 
     private function generateCertificateNumber(string $distributorCode): string
     {
-        return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(6);
+        return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(8);
     }
 
         private function randomCode(int $length = 8): string
