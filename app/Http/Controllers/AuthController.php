@@ -506,7 +506,7 @@ class AuthController extends Controller
         return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(6);
     }
 
-        private function randomCode(int $length = 6): string
+        private function randomCode(int $length = 8): string
     {
         $characters = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
         $code = '';
