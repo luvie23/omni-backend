@@ -8,14 +8,12 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
 use App\Mail\ContractorWelcomeMail;
 use App\Models\CertifiedPerson;
 use Illuminate\Support\Facades\Mail;
 
 class AuthController extends Controller
 {
-
     public function login(Request $request)
     {
         $credentials = $request->validate([
@@ -506,7 +504,7 @@ class AuthController extends Controller
         return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(8);
     }
 
-        private function randomCode(int $length = 8): string
+    private function randomCode(int $length = 8): string
     {
         $characters = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
         $code = '';

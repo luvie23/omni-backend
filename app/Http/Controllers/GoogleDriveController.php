@@ -9,25 +9,26 @@ class GoogleDriveController extends Controller
 {
     public function __construct(
         protected GoogleDriveService $driveService
-    ) {}
+    ) {
+    }
 
     public function folder(?string $folderId = null): JsonResponse
     {
         $folderId ??= config('services.google_drive.folder_id');
 
-       $response = $this->driveService
-        ->getDrive()
-        ->files
-        ->listFiles([
-            'q' => "'{$folderId}' in parents and trashed = false",
+        $response = $this->driveService
+         ->getDrive()
+         ->files
+         ->listFiles([
+             'q' => "'{$folderId}' in parents and trashed = false",
 
-            'fields' => 'files(id,name,mimeType,webViewLink,thumbnailLink,modifiedTime,size)',
+             'fields' => 'files(id,name,mimeType,webViewLink,thumbnailLink,modifiedTime,size)',
 
-            'orderBy' => 'folder,name',
+             'orderBy' => 'folder,name',
 
-            'includeItemsFromAllDrives' => true,
-            'supportsAllDrives' => true,
-        ]);
+             'includeItemsFromAllDrives' => true,
+             'supportsAllDrives' => true,
+         ]);
 
         $items = collect($response->getFiles())->map(function ($file) {
 

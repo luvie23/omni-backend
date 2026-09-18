@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Hash;
 
-
 class ContractorController extends Controller
 {
     // Contractor: view own profile
@@ -96,27 +95,37 @@ class ContractorController extends Controller
                 });
             })
             ->when(!empty($validated['company_name']), function ($query) use ($validated) {
-                $query->whereHas('contractorProfile', fn ($q) =>
+                $query->whereHas(
+                    'contractorProfile',
+                    fn ($q) =>
                     $q->where('company_name', 'like', '%' . $validated['company_name'] . '%')
                 );
             })
             ->when(!empty($validated['city']), function ($query) use ($validated) {
-                $query->whereHas('contractorProfile', fn ($q) =>
+                $query->whereHas(
+                    'contractorProfile',
+                    fn ($q) =>
                     $q->where('city', 'like', '%' . $validated['city'] . '%')
                 );
             })
             ->when(!empty($validated['state']), function ($query) use ($validated) {
-                $query->whereHas('contractorProfile', fn ($q) =>
+                $query->whereHas(
+                    'contractorProfile',
+                    fn ($q) =>
                     $q->where('state', 'like', '%' . $validated['state'] . '%')
                 );
             })
             ->when(!empty($validated['zip']), function ($query) use ($validated) {
-                $query->whereHas('contractorProfile', fn ($q) =>
+                $query->whereHas(
+                    'contractorProfile',
+                    fn ($q) =>
                     $q->where('zip', $validated['zip'])
                 );
             })
             ->when(!empty($validated['service_area']), function ($query) use ($validated) {
-                $query->whereHas('contractorProfile', fn ($q) =>
+                $query->whereHas(
+                    'contractorProfile',
+                    fn ($q) =>
                     $q->where('service_area', 'like', '%' . $validated['service_area'] . '%')
                 );
             })
@@ -130,7 +139,8 @@ class ContractorController extends Controller
     public function nameId()
     {
         return response()->json(
-        Contractor::select('id', 'company_name')->get());
+            Contractor::select('id', 'company_name')->get()
+        );
     }
 
     // Admin: show contractor by contractors.id

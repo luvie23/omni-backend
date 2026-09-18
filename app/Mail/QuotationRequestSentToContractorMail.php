@@ -9,7 +9,8 @@ use Illuminate\Queue\SerializesModels;
 
 class QuotationRequestSentToContractorMail extends Mailable
 {
-    use Queueable, SerializesModels;
+    use Queueable;
+    use SerializesModels;
 
     public QuotationRequest $quote;
     public object $contractor;

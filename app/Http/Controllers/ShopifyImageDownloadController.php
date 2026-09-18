@@ -19,7 +19,7 @@ class ShopifyImageDownloadController extends Controller
         $zipFileName = 'shopify-images-' . time() . '.zip';
         $zipPath = storage_path('app/' . $zipFileName);
 
-        $zip = new ZipArchive;
+        $zip = new ZipArchive();
 
         if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
             return response()->json(['message' => 'Could not create ZIP file.'], 500);

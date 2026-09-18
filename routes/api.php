@@ -9,6 +9,7 @@ use App\Http\Controllers\CertificationVerificationController;
 use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
 use App\Http\Controllers\ContractorMapController;
+use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\GoogleDriveController;
 use App\Http\Controllers\KnowledgeBaseAdminController;
@@ -21,7 +22,6 @@ use App\Http\Controllers\TestController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Mail;
-
 use App\Services\GoogleDriveService;
 
 Route::get('/google-drive/folder-info/{folderId}', function (
@@ -49,7 +49,7 @@ Route::get('/google-drive/folder-info/{folderId}', function (
     }
 });
 
-Route::post('/calculate',[CalculatorController::class, 'calculate']);
+Route::post('/calculate', [CalculatorController::class, 'calculate']);
 
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
@@ -153,6 +153,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/knowledge-base', [KnowledgeBaseController::class, 'index']);
         Route::get('/knowledge-base/{article}', [KnowledgeBaseController::class, 'show']);
         Route::get('/knowledge-base/{article}/video', [KnowledgeBaseController::class, 'stream']);
+
+
+        Route::get('/estimates', [EstimateController::class, 'index']);
+        Route::post('/estimates', [EstimateController::class, 'store']);
+        Route::get('/estimates/{id}', [EstimateController::class, 'show']);
+        Route::put('/estimates/{id}', [EstimateController::class, 'update']);
+        Route::delete('/estimates/{id}', [EstimateController::class, 'destroy']);
 
     });
 

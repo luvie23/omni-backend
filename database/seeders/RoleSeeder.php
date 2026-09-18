@@ -13,7 +13,7 @@ class RoleSeeder extends Seeder
      */
     public function run(): void
     {
-         // Use a consistent guard name (API typically uses "web" unless you're using a custom guard)
+        // Use a consistent guard name (API typically uses "web" unless you're using a custom guard)
         $guard = config('auth.defaults.guard', 'web');
 
         Role::firstOrCreate(['name' => 'admin', 'guard_name' => $guard]);

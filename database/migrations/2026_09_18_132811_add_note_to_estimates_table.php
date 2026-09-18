@@ -7,15 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class () extends Migration {
     public function up(): void
     {
-        Schema::table('contractors', function (Blueprint $table) {
-            $table->index('zip');
+        Schema::table('estimates', function (Blueprint $table) {
+            $table->text('note')->nullable()->after('project_address');
         });
     }
 
     public function down(): void
     {
-        Schema::table('contractors', function (Blueprint $table) {
-            $table->dropIndex(['zip']);
+        Schema::table('estimates', function (Blueprint $table) {
+            $table->dropColumn('note');
         });
     }
 };

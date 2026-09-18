@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-
 use App\Models\Contractor;
 
 class ContractorMapController extends Controller

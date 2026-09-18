@@ -15,7 +15,7 @@ class QuotationRequestAdminController extends Controller
 {
     public function index(Request $request)
     {
-      $query = QuotationRequest::query()->latest();
+        $query = QuotationRequest::query()->latest();
 
         if ($status = $request->string('status')->toString()) {
             if (in_array($status, ['new', 'contacted', 'closed'], true)) {
