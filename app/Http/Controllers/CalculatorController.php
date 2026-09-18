@@ -916,7 +916,7 @@ class CalculatorController extends Controller
                         0.05,
 
                     'charge_per_foot_option_1' =>
-                        19.20,
+                        20,
 
                     'charge_per_foot_option_2' =>
                         25.00,
