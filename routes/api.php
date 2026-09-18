@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminSettingsController;
 use App\Http\Controllers\Api\ResourceController;
 use App\Http\Controllers\CertifiedPersonAdminController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\CertificationVerificationController;
 use App\Http\Controllers\CertifiedPersonController;
 use App\Http\Controllers\ContractorController;
@@ -48,6 +49,7 @@ Route::get('/google-drive/folder-info/{folderId}', function (
     }
 });
 
+Route::post('/calculate',[CalculatorController::class, 'calculate']);
 
 
 Route::middleware(['auth:sanctum'])->get('/user', function (Request $request) {
