@@ -131,14 +131,23 @@ class CalculatorController extends Controller
         ],
     ];
 
+    private const CUSTOM_TRACK_PRICES = [
+        '88210' => 10.16,
+        '88220' => 11.04,
+        '88230-90' => 11.04,
+        '88230-A' => 12.15,
+        '88240-90' => 14.36,
+        '88240-A' => 13.25,
+    ];
+
     public function calculate(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            /*
-            |--------------------------------------------------------------------------
-            | Estimator CalculatorMaterial Li - user inputs
-            |--------------------------------------------------------------------------
-            */
+            /**
+             * --------------------------------------------------------------------------
+             * Estimator CalculatorMaterial Li - user inputs
+             * --------------------------------------------------------------------------
+             */
 
             'runs' => ['required', 'array', 'min:1', 'max:15'],
             'runs.*' => ['nullable', 'numeric', 'min:0'],
@@ -148,7 +157,6 @@ class CalculatorController extends Controller
             'track_style' => ['nullable', 'string'],
             'track_color_type' => ['nullable', 'string'],
             'custom_track_color' => ['nullable', 'string'],
-            'custom_track_price' => ['nullable', 'numeric', 'min:0'],
 
             'splitters' => ['nullable', 'numeric', 'min:0'],
 
@@ -172,7 +180,7 @@ class CalculatorController extends Controller
 
             'waste_percentage' => ['nullable', 'numeric', 'min:0'],
 
-            /*
+            /**
              * Workbook F1 pricing selector.
              */
             'price_level' => ['nullable', 'in:wholesale,gold'],
@@ -187,11 +195,11 @@ class CalculatorController extends Controller
 
         $data = $validator->validated();
 
-        /*
-        |--------------------------------------------------------------------------
-        | Inputs
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Inputs
+         * --------------------------------------------------------------------------
+         */
 
         $runs = array_map(
             fn ($run) => (float) ($run ?? 0),
@@ -212,13 +220,10 @@ class CalculatorController extends Controller
         $customTrackColor =
             $data['custom_track_color'] ?? '';
 
-        $customTrackPrice =
-            (float) ($data['custom_track_price'] ?? 0);
-
         $splitters =
             (float) ($data['splitters'] ?? 0);
 
-        /*
+        /**
          * Workbook H34 default.
          */
         $solidTrackFeet =
@@ -236,19 +241,19 @@ class CalculatorController extends Controller
         $additionalControllers =
             (float) ($data['additional_controllers'] ?? 0);
 
-        /*
+        /**
          * Workbook C42 default = 5%.
          */
         $wastePercentage =
             (float) ($data['waste_percentage'] ?? 0.05);
 
-        /*
+        /**
          * Workbook F1 defaults to ws.
          */
         $priceLevel =
             $data['price_level'] ?? 'wholesale';
 
-        /*
+        /**
          * Workbook H39 / H40.
          *
          * These are the PSU quantities actually used
@@ -269,11 +274,11 @@ class CalculatorController extends Controller
             50 => (float) ($data['extensions'][50] ?? 0),
         ];
 
-        /*
-        |--------------------------------------------------------------------------
-        | Light calculations
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Light calculations
+         * --------------------------------------------------------------------------
+         */
 
         $lightCalculation =
             $this->calculateLights($runs);
@@ -286,17 +291,17 @@ class CalculatorController extends Controller
             $lightCalculation['five_piece_units']
             - ($singleLights / 5);
 
-        /*
+        /**
          * Workbook total-light value.
          */
         $totalLights =
             $lightCalculation['five_piece_units'] * 5;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Extension calculations
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Extension calculations
+         * --------------------------------------------------------------------------
+         */
 
         $automaticExtensions =
             $this->calculateAutomaticExtensions(
@@ -311,16 +316,16 @@ class CalculatorController extends Controller
                 + $automaticExtensions[$feet];
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Power calculations
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Power calculations
+         * --------------------------------------------------------------------------
+         */
 
         $wattsNeeded =
             (($totalFeet * 12) / 8) * 0.96;
 
-        /*
+        /**
          * These are recommendations only.
          *
          * They do not automatically get added to the
@@ -335,18 +340,18 @@ class CalculatorController extends Controller
             ($estimatedPowerSupplies['350w'] * 300)
             + ($estimatedPowerSupplies['600w'] * 510);
 
-        /*
+        /**
          * Adjusted/selected PSU values.
          */
         $adjustedAvailableWatts =
             ($adjusted350 * 300)
             + ($adjusted600 * 510);
 
-        /*
-        |--------------------------------------------------------------------------
-        | System components
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * System components
+         * --------------------------------------------------------------------------
+         */
 
         $controllers =
             $this->excelRoundUp(
@@ -373,16 +378,16 @@ class CalculatorController extends Controller
                 ? ($powerInjectors - 1) * 70
                 : 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Order List
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Order List
+         * --------------------------------------------------------------------------
+         */
 
         $orderList = [];
 
-        /*
-         * Standard track.
+        /**
+         * Standard / Custom track.
          */
         $standardTrackQuantity =
             ($totalFeet * 12) / 40;
@@ -410,6 +415,29 @@ class CalculatorController extends Controller
         $isCustomTrack =
             strtolower(trim($trackColorType)) === 'custom';
 
+        /**
+         * Get the SKU corresponding to the selected
+         * track style.
+         */
+        $trackSku =
+            $trackMap[$trackStyle] ?? null;
+
+        /**
+         * Custom track price is determined by the
+         * selected track style.
+         *
+         * The frontend no longer supplies this price.
+         */
+        $customTrackPrice =
+            $isCustomTrack && $trackSku !== null
+                ? (float) (self::CUSTOM_TRACK_PRICES[$trackSku] ?? 0)
+                : 0;
+
+        /**
+         * Standard track.
+         *
+         * Do not add standard track when Custom is selected.
+         */
         foreach ($trackMap as $style => $sku) {
             $quantity = 0;
 
@@ -431,7 +459,7 @@ class CalculatorController extends Controller
             );
         }
 
-        /*
+        /**
          * Custom track.
          */
         $customTrackQuantity =
@@ -483,7 +511,7 @@ class CalculatorController extends Controller
                 $customTrackWasteCost,
         ];
 
-        /*
+        /**
          * Solid track.
          *
          * ROUNDUP(H34 * 12, 0) / 40
@@ -502,7 +530,7 @@ class CalculatorController extends Controller
             applyWaste: true
         );
 
-        /*
+        /**
          * Single lights.
          */
         $this->addProductRow(
@@ -514,7 +542,7 @@ class CalculatorController extends Controller
             applyWaste: true
         );
 
-        /*
+        /**
          * Five-light sets.
          */
         $this->addProductRow(
@@ -526,7 +554,7 @@ class CalculatorController extends Controller
             applyWaste: true
         );
 
-        /*
+        /**
          * Adjusted power supplies.
          */
         $this->addProductRow(
@@ -545,7 +573,7 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
+        /**
          * Controller.
          */
         $this->addProductRow(
@@ -556,7 +584,7 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
+        /**
          * Signal booster.
          */
         $this->addProductRow(
@@ -567,7 +595,7 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
+        /**
          * Splitters.
          */
         $this->addProductRow(
@@ -578,7 +606,7 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
+        /**
          * Power injectors.
          */
         $this->addProductRow(
@@ -589,7 +617,7 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
+        /**
          * Female adapters.
          */
         $this->addProductRow(
@@ -600,7 +628,7 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
+        /**
          * Extensions.
          */
         $extensionSkuMap = [
@@ -622,7 +650,7 @@ class CalculatorController extends Controller
             );
         }
 
-        /*
+        /**
          * Power injection wire.
          */
         $this->addProductRow(
@@ -633,11 +661,11 @@ class CalculatorController extends Controller
             priceLevel: $priceLevel
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Material totals
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Material totals
+         * --------------------------------------------------------------------------
+         */
 
         $materialCost = 0;
         $wasteAdditionalCost = 0;
@@ -664,16 +692,15 @@ class CalculatorController extends Controller
                 ? $materialCostWithWaste / $totalFeet
                 : 0;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Data needed by PriceLaborMarginEstimator
-        |--------------------------------------------------------------------------
-        |
-        | Vue can now perform all of the what-if labor,
-        | pricing and margin calculations without calling
-        | Laravel again.
-        |
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Data needed by PriceLaborMarginEstimator
+         * --------------------------------------------------------------------------
+         *
+         * Vue can now perform all of the what-if labor,
+         * pricing and margin calculations without calling
+         * Laravel again.
+         */
 
         $laborEstimatorExtensionFeet =
             $distanceToFirstLight
@@ -688,11 +715,11 @@ class CalculatorController extends Controller
             $adjusted350
             + $adjusted600;
 
-        /*
-        |--------------------------------------------------------------------------
-        | Response
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * --------------------------------------------------------------------------
+         * Response
+         * --------------------------------------------------------------------------
+         */
 
         return response()->json([
             'input' => [
@@ -714,6 +741,10 @@ class CalculatorController extends Controller
                 'custom_track_color' =>
                     $customTrackColor,
 
+                /**
+                 * This is now calculated by Laravel from
+                 * the selected track style.
+                 */
                 'custom_track_price' =>
                     $customTrackPrice,
 
@@ -772,7 +803,7 @@ class CalculatorController extends Controller
                 'watts_needed' =>
                     $this->roundValue($wattsNeeded),
 
-                /*
+                /**
                  * Excel F39/F40 recommendation.
                  */
                 'estimated' => [
@@ -786,7 +817,7 @@ class CalculatorController extends Controller
                         $estimatedAvailableWatts,
                 ],
 
-                /*
+                /**
                  * Excel H39/H40 user-adjusted quantities.
                  */
                 'adjusted' => [
@@ -865,7 +896,7 @@ class CalculatorController extends Controller
                     ),
             ],
 
-            /*
+            /**
              * This contains the values Vue needs to
              * reproduce PriceLaborMarginEstimator.
              */
@@ -889,7 +920,7 @@ class CalculatorController extends Controller
                         ),
                 ],
 
-                /*
+                /**
                  * Default yellow-cell values from
                  * PriceLaborMarginEstimator.
                  *
