@@ -13,121 +13,144 @@ class CalculatorController extends Controller
             'description' => 'RGBW (3000K) 12 Volt LED Single Light',
             'wholesale' => 3.99,
             'gold' => 3.81,
+            'do_not_sell_below' => 3.80952380952381,
         ],
         '88012-5' => [
             'description' => 'RGBW (3000K) 12 Volt LED Set of 5',
             'wholesale' => 15.95,
             'gold' => 15.25,
+            'do_not_sell_below' => 15.23809523809524,
         ],
 
         '88210' => [
             'description' => 'Aluminum Track Single',
             'wholesale' => 7.32,
             'gold' => 7.10,
+            'do_not_sell_below' => 7.118345275647088,
         ],
         '88220' => [
             'description' => 'Aluminum Double Track',
             'wholesale' => 7.96,
             'gold' => 7.74,
+            'do_not_sell_below' => 7.737331821355531,
         ],
         '88230-90' => [
             'description' => 'Aluminum Parapet Track - 90 Degree Output',
             'wholesale' => 7.96,
             'gold' => 7.74,
+            'do_not_sell_below' => 7.737331821355531,
         ],
         '88230-A' => [
             'description' => 'Aluminum Parapet Track - Angled Output',
             'wholesale' => 7.96,
             'gold' => 7.74,
+            'do_not_sell_below' => 7.737331821355531,
         ],
         '88240-90' => [
             'description' => '2-Piece Parapet Track - 90 Degree Output',
             'wholesale' => 10.35,
             'gold' => 10.05,
+            'do_not_sell_below' => 10.05853136776219,
         ],
         '88240-A' => [
             'description' => '2-Piece Parapet Track - Angled Output',
             'wholesale' => 9.55,
             'gold' => 9.27,
+            'do_not_sell_below' => 9.284798185626636,
         ],
         '88222' => [
             'description' => 'Solid Track',
             'wholesale' => 7.96,
             'gold' => 7.74,
+            'do_not_sell_below' => 7.737331821355531,
         ],
 
         '89110-350' => [
             'description' => 'Enhanced - 350 Watt Power Supply (12V) in waterproof box',
             'wholesale' => 259.15,
             'gold' => 254.07,
+            'do_not_sell_below' => 254.13391162916787,
         ],
         '89110-600' => [
             'description' => 'Enhanced - 600 Watt Power Supply (12V) in waterproof box',
             'wholesale' => 352.44,
             'gold' => 345.55,
+            'do_not_sell_below' => 345.6221198156682,
         ],
 
         '88120' => [
             'description' => 'Single Channel WiFi/Bluetooth Controller',
             'wholesale' => 70.86,
             'gold' => 63.05,
+            'do_not_sell_below' => 63.57356806650774,
         ],
         '88121' => [
             'description' => 'Enhanced - Signal Booster',
             'wholesale' => 10.76,
             'gold' => 12.39,
+            'do_not_sell_below' => 9.780548933308882,
         ],
         '88122' => [
             'description' => 'Enhanced - Splitter 1 to 2',
             'wholesale' => 5.38,
             'gold' => 6.22,
+            'do_not_sell_below' => 4.890274466654441,
         ],
         '88123' => [
             'description' => 'Enhanced - Power T Injector',
             'wholesale' => 4.84,
             'gold' => 5.59,
+            'do_not_sell_below' => 4.401247019988998,
         ],
         '88126' => [
             'description' => 'Female Adapter',
             'wholesale' => 2.42,
             'gold' => 2.80,
+            'do_not_sell_below' => 2.200623509994499,
         ],
 
         '88312-1' => [
             'description' => "1' Extension",
             'wholesale' => 1.18,
             'gold' => 1.55,
+            'do_not_sell_below' => 1.0758603826639772,
         ],
         '88312-3' => [
             'description' => "3' Extension",
             'wholesale' => 1.83,
             'gold' => 2.12,
+            'do_not_sell_below' => 1.6626933186625104,
         ],
         '88312-5' => [
             'description' => "5' Extension",
             'wholesale' => 2.37,
             'gold' => 2.73,
+            'do_not_sell_below' => 2.1517207653279544,
         ],
         '88312-10' => [
             'description' => "10' Extension",
             'wholesale' => 3.39,
             'gold' => 3.91,
+            'do_not_sell_below' => 3.0808729139922986,
         ],
         '88312-25' => [
             'description' => "25' Extension",
             'wholesale' => 6.86,
             'gold' => 7.92,
+            'do_not_sell_below' => 6.2350999449844124,
         ],
         '88312-50' => [
             'description' => "50' Extension",
             'wholesale' => 13.45,
             'gold' => 15.53,
+            'do_not_sell_below' => 12.225686166636104,
         ],
 
         '1800162-500' => [
             'description' => 'Power Injection Wire - 16/2 (feet)',
             'wholesale' => 0.30,
             'gold' => 0.30,
+            'do_not_sell_below' => null,
         ],
     ];
 
@@ -138,6 +161,15 @@ class CalculatorController extends Controller
         '88230-A' => 12.15,
         '88240-90' => 14.36,
         '88240-A' => 13.25,
+    ];
+
+    private const CUSTOM_TRACK_DO_NOT_SELL_BELOW = [
+        '88210' => 9.761480349715645,
+        '88220' => 10.610304727951789,
+        '88230-90' => 10.610304727951789,
+        '88230-A' => 11.671335200746968,
+        '88240-90' => 13.793396146337326,
+        '88240-A' => 12.732365673542146,
     ];
 
     public function calculate(Request $request): JsonResponse
@@ -477,6 +509,25 @@ class CalculatorController extends Controller
             $customTrackPrice
             * $customTrackQuantity;
 
+        $customTrackDoNotSellBelow =
+            $isCustomTrack && $trackSku !== null
+                ? self::CUSTOM_TRACK_DO_NOT_SELL_BELOW[$trackSku] ?? null
+                : null;
+
+        $customTrackDoNotSellBelowTotal =
+            $customTrackDoNotSellBelow !== null
+                ? $customTrackDoNotSellBelow * $customTrackQuantity
+                : 0;
+
+        $customTrackDoNotSellBelowWasteCost =
+            $customTrackDoNotSellBelow !== null
+            && $customTrackWasteQuantity > 0
+                ? (
+                    $customTrackWasteQuantity
+                    - $customTrackQuantity
+                ) * $customTrackDoNotSellBelow
+                : 0;
+
         $customTrackWasteCost =
             $customTrackWasteQuantity > 0
                 ? (
@@ -509,6 +560,15 @@ class CalculatorController extends Controller
 
             'waste_additional_cost' =>
                 $customTrackWasteCost,
+
+            'do_not_sell_below_unit_price' =>
+                $customTrackDoNotSellBelow,
+
+            'do_not_sell_below_total_cost' =>
+                $customTrackDoNotSellBelowTotal,
+
+            'do_not_sell_below_waste_additional_cost' =>
+                $customTrackDoNotSellBelowWasteCost,
         ];
 
         /**
@@ -669,6 +729,8 @@ class CalculatorController extends Controller
 
         $materialCost = 0;
         $wasteAdditionalCost = 0;
+        $doNotSellBelowCost = 0;
+        $doNotSellBelowWasteAdditionalCost = 0;
 
         foreach ($orderList as $row) {
             $materialCost +=
@@ -676,6 +738,12 @@ class CalculatorController extends Controller
 
             $wasteAdditionalCost +=
                 $row['waste_additional_cost'];
+
+            $doNotSellBelowCost +=
+                $row['do_not_sell_below_total_cost'] ?? 0;
+
+            $doNotSellBelowWasteAdditionalCost +=
+                $row['do_not_sell_below_waste_additional_cost'] ?? 0;
         }
 
         $materialCostWithWaste =
@@ -690,6 +758,20 @@ class CalculatorController extends Controller
         $costPerFootWithWaste =
             $totalFeet > 0
                 ? $materialCostWithWaste / $totalFeet
+                : 0;
+
+        $doNotSellBelowCostWithWaste =
+            $doNotSellBelowCost
+            + $doNotSellBelowWasteAdditionalCost;
+
+        $doNotSellBelowCostPerFoot =
+            $totalFeet > 0
+                ? $doNotSellBelowCost / $totalFeet
+                : 0;
+
+        $doNotSellBelowCostPerFootWithWaste =
+            $totalFeet > 0
+                ? $doNotSellBelowCostWithWaste / $totalFeet
                 : 0;
 
         /**
@@ -893,6 +975,31 @@ class CalculatorController extends Controller
                 'cost_per_foot_with_waste' =>
                     $this->money(
                         $costPerFootWithWaste
+                    ),
+
+                'do_not_sell_below_cost' =>
+                    $this->money(
+                        $doNotSellBelowCost
+                    ),
+
+                'do_not_sell_below_waste_additional_cost' =>
+                    $this->money(
+                        $doNotSellBelowWasteAdditionalCost
+                    ),
+
+                'do_not_sell_below_cost_with_waste' =>
+                    $this->money(
+                        $doNotSellBelowCostWithWaste
+                    ),
+
+                'do_not_sell_below_cost_per_foot' =>
+                    $this->money(
+                        $doNotSellBelowCostPerFoot
+                    ),
+
+                'do_not_sell_below_cost_per_foot_with_waste' =>
+                    $this->money(
+                        $doNotSellBelowCostPerFootWithWaste
                     ),
             ],
 
@@ -1265,8 +1372,14 @@ class CalculatorController extends Controller
         $unitPrice =
             (float) $product[$priceLevel];
 
+        $doNotSellBelowUnitPrice =
+            isset($product['do_not_sell_below'])
+                ? (float) $product['do_not_sell_below']
+                : null;
+
         $wasteAdjustedQuantity = 0;
         $wasteAdditionalCost = 0;
+        $doNotSellBelowWasteAdditionalCost = 0;
 
         if ($applyWaste) {
             $wasteAdjustedQuantity =
@@ -1281,6 +1394,14 @@ class CalculatorController extends Controller
                         $wasteAdjustedQuantity
                         - $quantity
                     ) * $unitPrice;
+
+                if ($doNotSellBelowUnitPrice !== null) {
+                    $doNotSellBelowWasteAdditionalCost =
+                        (
+                            $wasteAdjustedQuantity
+                            - $quantity
+                        ) * $doNotSellBelowUnitPrice;
+                }
             }
         }
 
@@ -1305,6 +1426,17 @@ class CalculatorController extends Controller
 
             'waste_additional_cost' =>
                 $wasteAdditionalCost,
+
+            'do_not_sell_below_unit_price' =>
+                $doNotSellBelowUnitPrice,
+
+            'do_not_sell_below_total_cost' =>
+                $doNotSellBelowUnitPrice !== null
+                    ? $doNotSellBelowUnitPrice * $quantity
+                    : 0,
+
+            'do_not_sell_below_waste_additional_cost' =>
+                $doNotSellBelowWasteAdditionalCost,
         ];
     }
 
