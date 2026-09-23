@@ -92,7 +92,12 @@ class QuotationRequestAdminController extends Controller
 
         $quote = QuotationRequest::findOrFail($quotationRequestId);
 
-        $requestZip = ZipCode::find($quote->zip);
+        // Remove leading zeros for ZIP lookup.
+        // Example: 01701 -> 1701
+        $searchZip = ltrim((string) $quote->zip, '0');
+        $searchZip = $searchZip === '' ? '0' : $searchZip;
+
+        $requestZip = ZipCode::where('zip', $searchZip)->first();
 
         if (!$requestZip) {
             return response()->json([
@@ -104,12 +109,23 @@ class QuotationRequestAdminController extends Controller
         $lat = (float) $requestZip->latitude;
         $lng = (float) $requestZip->longitude;
 
-        $radiusMiles = (int) (Setting::where('key', 'contractor_search_radius_miles')->value('value') ?? 100);
+        $radiusMiles = (int) (
+            Setting::where('key', 'contractor_search_radius_miles')
+                ->value('value') ?? 100
+        );
 
         $earthRadiusMiles = 3959;
 
         $contractors = DB::table('contractors')
-            ->join('zip_codes as contractor_zip', 'contractor_zip.zip', '=', 'contractors.zip')
+            // Compare ZIP codes numerically so leading zeros don't matter.
+            // Example: 01701 = 1701
+            ->join('zip_codes as contractor_zip', function ($join) {
+                $join->on(
+                    DB::raw('CAST(contractor_zip.zip AS UNSIGNED)'),
+                    '=',
+                    DB::raw('CAST(contractors.zip AS UNSIGNED)')
+                );
+            })
             ->leftJoin('contractor_quotation_request as cqr', function ($join) use ($quotationRequestId) {
                 $join->on('cqr.contractor_id', '=', 'contractors.id')
                     ->where('cqr.quotation_request_id', '=', $quotationRequestId);
@@ -146,7 +162,10 @@ class QuotationRequestAdminController extends Controller
                 return [
                     'id' => $contractor->id,
                     'email' => $contractor->email,
-                    'distance_miles' => round((float) $contractor->distance_miles, 2),
+                    'distance_miles' => round(
+                        (float) $contractor->distance_miles,
+                        2
+                    ),
                     'already_sent' => !is_null($contractor->sent_at),
                     'sent_at' => $contractor->sent_at,
                     'contractor_profile' => [
