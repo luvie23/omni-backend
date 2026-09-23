@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewQuotationRequest;
 use App\Models\QuotationRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 
 class QuotationRequestController extends Controller
 {
@@ -25,6 +27,9 @@ class QuotationRequestController extends Controller
             ...$data,
             'status' => 'new',
         ]);
+
+        Mail::to('cs@lightsfordecorators.com')
+            ->send(new NewQuotationRequest($quote));
 
         return response()->json([
             'message' => 'Quotation request submitted successfully.',
