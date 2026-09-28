@@ -9,8 +9,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use App\Mail\ContractorWelcomeMail;
+use App\Mail\ContractorImportSummaryMail;
 use App\Models\CertifiedPerson;
 use Illuminate\Support\Facades\Mail;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AuthController extends Controller
 {
@@ -164,18 +169,23 @@ class AuthController extends Controller
         $header = fgetcsv($file);
 
         if (!$header) {
+            fclose($file);
+
             return response()->json([
                 'message' => 'CSV file is empty or missing a header row.',
             ], 422);
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Normalize headers
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * |--------------------------------------------------------------------------
+         * | Normalize headers
+         * |--------------------------------------------------------------------------
+         */
 
-        $header = array_map(fn ($h) => strtolower(trim($h)), $header);
+        $header = array_map(
+            fn ($h) => strtolower(trim($h)),
+            $header
+        );
 
         $requiredHeaders = [
             'name',
@@ -187,6 +197,7 @@ class AuthController extends Controller
             'state',
             'zip',
             'service_area',
+            'distributor',
         ];
 
         $missingHeaders = array_diff($requiredHeaders, $header);
@@ -203,12 +214,13 @@ class AuthController extends Controller
         $created = 0;
         $errors = [];
         $createdUsers = [];
+        $resultRows = [];
 
-        /*
-        |--------------------------------------------------------------------------
-        | Track emails already seen in this CSV
-        |--------------------------------------------------------------------------
-        */
+        /**
+         * |--------------------------------------------------------------------------
+         * | Track emails already seen in this CSV
+         * |--------------------------------------------------------------------------
+         */
 
         $seenEmails = [];
 
@@ -220,31 +232,45 @@ class AuthController extends Controller
             while (($row = fgetcsv($file)) !== false) {
                 $rowIndex++;
 
-                /*
-                |--------------------------------------------------------------------------
-                | Skip empty rows
-                |--------------------------------------------------------------------------
-                */
+                /**
+                 * |--------------------------------------------------------------------------
+                 * | Skip empty rows
+                 * |--------------------------------------------------------------------------
+                 */
 
                 if (count(array_filter($row)) === 0) {
                     continue;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Column mismatch
-                |--------------------------------------------------------------------------
-                */
+                /**
+                 * |--------------------------------------------------------------------------
+                 * | Column mismatch
+                 * |--------------------------------------------------------------------------
+                 */
 
                 if (count($row) !== count($header)) {
+                    $reason = 'Column count does not match header count.';
+
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => null,
                         'errors' => [
                             'row' => [
-                                'Column count does not match header count.',
+                                $reason,
                             ],
                         ],
+                    ];
+
+                    $rowData = [];
+
+                    foreach ($header as $index => $columnName) {
+                        $rowData[$columnName] = $row[$index] ?? '';
+                    }
+
+                    $resultRows[] = [
+                        'data' => $rowData,
+                        'success' => false,
+                        'result' => 'Failed: ' . $reason,
                     ];
 
                     continue;
@@ -252,26 +278,48 @@ class AuthController extends Controller
 
                 $data = array_combine($header, $row);
 
-                /*
-                |--------------------------------------------------------------------------
-                | Check duplicate email within CSV
-                |--------------------------------------------------------------------------
-                */
+                /**
+                 * Clean common CSV whitespace
+                 */
+                if (isset($data['email'])) {
+                    $data['email'] = trim($data['email']);
+                }
 
-                $normalizedEmail = strtolower(trim($data['email'] ?? ''));
+                if (isset($data['state'])) {
+                    $data['state'] = trim($data['state']);
+                }
+
+                /**
+                 * |--------------------------------------------------------------------------
+                 * | Check duplicate email within CSV
+                 * |--------------------------------------------------------------------------
+                 */
+
+                $normalizedEmail = strtolower(
+                    trim($data['email'] ?? '')
+                );
 
                 if (
                     $normalizedEmail !== '' &&
                     isset($seenEmails[$normalizedEmail])
                 ) {
+                    $reason =
+                        "Duplicate email in CSV. First appeared on row {$seenEmails[$normalizedEmail]}.";
+
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => $data['email'] ?? null,
                         'errors' => [
                             'email' => [
-                                "Duplicate email in CSV. First appeared on row {$seenEmails[$normalizedEmail]}.",
+                                $reason,
                             ],
                         ],
+                    ];
+
+                    $resultRows[] = [
+                        'data' => $data,
+                        'success' => false,
+                        'result' => 'Failed: ' . $reason,
                     ];
 
                     continue;
@@ -281,11 +329,11 @@ class AuthController extends Controller
                     $seenEmails[$normalizedEmail] = $rowIndex;
                 }
 
-                /*
-                |--------------------------------------------------------------------------
-                | Validate row
-                |--------------------------------------------------------------------------
-                */
+                /**
+                 * |--------------------------------------------------------------------------
+                 * | Validate row
+                 * |--------------------------------------------------------------------------
+                 */
 
                 $validator = Validator::make($data, [
                     'name' => 'required|string|max:255',
@@ -307,13 +355,33 @@ class AuthController extends Controller
                     'zip' => 'required|string|max:10',
 
                     'service_area' => 'required|string|max:255',
+
+                    'distributor' => 'required|string|size:2|alpha',
                 ]);
 
                 if ($validator->fails()) {
+                    $validationErrors =
+                        $validator->errors()->toArray();
+
                     $errors[] = [
                         'row' => $rowIndex,
                         'email' => $data['email'] ?? null,
-                        'errors' => $validator->errors()->toArray(),
+                        'errors' => $validationErrors,
+                    ];
+
+                    $messages = [];
+
+                    foreach ($validationErrors as $fieldErrors) {
+                        foreach ($fieldErrors as $message) {
+                            $messages[] = $message;
+                        }
+                    }
+
+                    $resultRows[] = [
+                        'data' => $data,
+                        'success' => false,
+                        'result' =>
+                            'Failed: ' . implode(' | ', $messages),
                     ];
 
                     continue;
@@ -322,19 +390,21 @@ class AuthController extends Controller
                 $validated = $validator->validated();
 
                 try {
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Generate password
-                    |--------------------------------------------------------------------------
-                    */
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Generate password
+                     * |--------------------------------------------------------------------------
+                     */
 
-                    $companyPart = ucfirst(strtolower(
-                        preg_replace(
-                            '/[^a-zA-Z0-9]/',
-                            '',
-                            $validated['company_name']
+                    $companyPart = ucfirst(
+                        strtolower(
+                            preg_replace(
+                                '/[^a-zA-Z0-9]/',
+                                '',
+                                $validated['company_name']
+                            )
                         )
-                    ));
+                    );
 
                     $statePart = strtolower(
                         preg_replace(
@@ -344,13 +414,16 @@ class AuthController extends Controller
                         )
                     );
 
-                    $password = $companyPart . $statePart . '!2026';
+                    $password =
+                        $companyPart .
+                        $statePart .
+                        '!2026';
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Find existing contractor OR create one
-                    |--------------------------------------------------------------------------
-                    */
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Find existing contractor OR create one
+                     * |--------------------------------------------------------------------------
+                     */
 
                     $contractor = Contractor::firstOrCreate(
                         [
@@ -384,11 +457,11 @@ class AuthController extends Controller
                         ]
                     );
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Create user
-                    |--------------------------------------------------------------------------
-                    */
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Create user
+                     * |--------------------------------------------------------------------------
+                     */
 
                     $user = User::create([
                         'name' => $validated['name'],
@@ -399,13 +472,18 @@ class AuthController extends Controller
 
                     $user->assignRole('contractor');
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Generate certification number
-                    |--------------------------------------------------------------------------
-                    */
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Generate certification number
+                     * |--------------------------------------------------------------------------
+                     */
 
-                    $certNumber = $this->generateCertificateNumber('NA');
+                    $certNumber =
+                        $this->generateCertificateNumber(
+                            strtoupper(
+                                trim($validated['distributor'])
+                            )
+                        );
 
                     $attempts = 0;
 
@@ -424,26 +502,33 @@ class AuthController extends Controller
                         }
 
                         $certNumber =
-                            $this->generateCertificateNumber('NA');
+                            $this->generateCertificateNumber(
+                                strtoupper(
+                                    trim($validated['distributor'])
+                                )
+                            );
                     }
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Create certified person
-                    |--------------------------------------------------------------------------
-                    */
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Create certified person
+                     * |--------------------------------------------------------------------------
+                     */
 
                     $certifiedPerson =
-                        $contractor->certifiedPeople()->create([
-                            'name' => $validated['name'],
-                            'certification_number' => $certNumber,
-                        ]);
+                        $contractor
+                            ->certifiedPeople()
+                            ->create([
+                                'user_id' => $user->id,
+                                'name' => $validated['name'],
+                                'certification_number' => $certNumber,
+                            ]);
 
-                    /*
-                    |--------------------------------------------------------------------------
-                    | Track created users
-                    |--------------------------------------------------------------------------
-                    */
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Track created users
+                     * |--------------------------------------------------------------------------
+                     */
 
                     $created++;
 
@@ -456,6 +541,18 @@ class AuthController extends Controller
                         'certification_number' =>
                             $certifiedPerson->certification_number,
                     ];
+
+                    /**
+                     * |--------------------------------------------------------------------------
+                     * | Track successful Excel row
+                     * |--------------------------------------------------------------------------
+                     */
+
+                    $resultRows[] = [
+                        'data' => $data,
+                        'success' => true,
+                        'result' => 'Success',
+                    ];
                 } catch (\Throwable $e) {
                     $errors[] = [
                         'row' => $rowIndex,
@@ -466,6 +563,13 @@ class AuthController extends Controller
                             ],
                         ],
                     ];
+
+                    $resultRows[] = [
+                        'data' => $data,
+                        'success' => false,
+                        'result' =>
+                            'Failed: ' . $e->getMessage(),
+                    ];
                 }
             }
 
@@ -473,16 +577,203 @@ class AuthController extends Controller
 
             DB::commit();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Send emails after successful commit
-            |--------------------------------------------------------------------------
-            */
+            /**
+             * |--------------------------------------------------------------------------
+             * | Generate Excel import report
+             * |--------------------------------------------------------------------------
+             */
 
-            foreach ($createdUsers as $createdUser) {
-                Mail::to('luvie@lightsfordecorators.com')
-                    ->send(new ContractorWelcomeMail($createdUser));
+            $spreadsheet = new Spreadsheet();
+
+            $sheet = $spreadsheet->getActiveSheet();
+
+            $sheet->setTitle('Import Results');
+
+            /**
+             * Original CSV columns + result column
+             */
+            $outputHeaders = array_merge(
+                $header,
+                ['result']
+            );
+
+            /**
+             * Header row
+             */
+            foreach (
+                $outputHeaders as $columnIndex => $columnName
+            ) {
+                $sheet->setCellValue(
+                    [$columnIndex + 1, 1],
+                    ucwords(
+                        str_replace(
+                            '_',
+                            ' ',
+                            $columnName
+                        )
+                    )
+                );
             }
+
+            $highestColumn =
+                $sheet->getHighestColumn();
+
+            $sheet
+                ->getStyle(
+                    'A1:' . $highestColumn . '1'
+                )
+                ->getFont()
+                ->setBold(true);
+
+            $excelRow = 2;
+
+            /**
+             * |--------------------------------------------------------------------------
+             * | Add rows to Excel
+             * |--------------------------------------------------------------------------
+             */
+
+            foreach ($resultRows as $resultRow) {
+                $columnIndex = 1;
+
+                /**
+                 * Original CSV data
+                 */
+                foreach ($header as $columnName) {
+                    $sheet->setCellValue(
+                        [$columnIndex, $excelRow],
+                        $resultRow['data'][$columnName] ?? ''
+                    );
+
+                    $columnIndex++;
+                }
+
+                /**
+                 * Result column
+                 */
+                $sheet->setCellValue(
+                    [$columnIndex, $excelRow],
+                    $resultRow['result']
+                );
+
+                /**
+                 * Green = success
+                 * Red = failure
+                 */
+                $fillColor =
+                    $resultRow['success']
+                        ? 'C6EFCE'
+                        : 'FFC7CE';
+
+                $sheet
+                    ->getStyle(
+                        'A' .
+                        $excelRow .
+                        ':' .
+                        $highestColumn .
+                        $excelRow
+                    )
+                    ->getFill()
+                    ->setFillType(
+                        Fill::FILL_SOLID
+                    )
+                    ->getStartColor()
+                    ->setARGB($fillColor);
+
+                $excelRow++;
+            }
+
+            /**
+             * |--------------------------------------------------------------------------
+             * | Excel formatting
+             * |--------------------------------------------------------------------------
+             */
+
+            $sheet->freezePane('A2');
+
+            if ($excelRow > 2) {
+                $sheet->setAutoFilter(
+                    'A1:' .
+                    $highestColumn .
+                    ($excelRow - 1)
+                );
+            }
+
+            $highestColumnIndex =
+                Coordinate::columnIndexFromString(
+                    $highestColumn
+                );
+
+            for (
+                $column = 1;
+                $column <= $highestColumnIndex;
+                $column++
+            ) {
+                $columnLetter =
+                    Coordinate::stringFromColumnIndex(
+                        $column
+                    );
+
+                $sheet
+                    ->getColumnDimension($columnLetter)
+                    ->setAutoSize(true);
+            }
+
+            /**
+             * |--------------------------------------------------------------------------
+             * | Save temporary Excel file
+             * |--------------------------------------------------------------------------
+             */
+
+            $excelFileName =
+                'contractor-import-results-' .
+                now()->format('Y-m-d-His') .
+                '.xlsx';
+
+            $excelPath =
+                storage_path(
+                    'app/' . $excelFileName
+                );
+
+            $writer = new Xlsx(
+                $spreadsheet
+            );
+
+            $writer->save(
+                $excelPath
+            );
+
+            /**
+             * |--------------------------------------------------------------------------
+             * | Send one summary email with Excel attachment
+             * |--------------------------------------------------------------------------
+             */
+
+            Mail::to(
+                'luvie@lightsfordecorators.com'
+            )->send(
+                new ContractorImportSummaryMail(
+                    $createdUsers,
+                    $errors,
+                    $excelPath
+                )
+            );
+
+            /**
+             * |--------------------------------------------------------------------------
+             * | Delete temporary Excel file
+             * |--------------------------------------------------------------------------
+             */
+
+            if (file_exists($excelPath)) {
+                unlink($excelPath);
+            }
+
+            /**
+             * |--------------------------------------------------------------------------
+             * | Keep existing API response
+             * |--------------------------------------------------------------------------
+             */
 
             return response()->json([
                 'message' => 'Import completed.',
