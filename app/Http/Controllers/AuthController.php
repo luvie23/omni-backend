@@ -63,11 +63,12 @@ class AuthController extends Controller
             'state' => 'required|string|size:2',
             'zip' => 'required|string|max:10',
             'service_area' => 'required|string|max:255',
+
+            // distributor
+            'distributor_code' => 'required|string|size:2|alpha',
         ]);
 
         $user = DB::transaction(function () use ($data) {
-
-
             $contractor = Contractor::create([
                 'company_name' => $data['company_name'],
                 'email' => $data['email'],
@@ -87,13 +88,48 @@ class AuthController extends Controller
                 'contractor_id' => $contractor->id,
             ]);
 
+            // Generate certification number
+            $certNumber = $this->generateCertificateNumber(
+                $data['distributor_code']
+            );
+
+            // Extra safety: retry on extremely unlikely collisions
+            $attempts = 0;
+
+            while (
+                CertifiedPerson::where(
+                    'certification_number',
+                    $certNumber
+                )->exists()
+            ) {
+                $attempts++;
+
+                if ($attempts > 5) {
+                    throw new \Exception(
+                        'Could not generate a unique certification number.'
+                    );
+                }
+
+                $certNumber = $this->generateCertificateNumber(
+                    $data['distributor_code']
+                );
+            }
+
+            // Create certified person linked to this user
+            CertifiedPerson::create([
+                'user_id' => $user->id,
+                'contractor_id' => $contractor->id,
+                'name' => $data['name'],
+                'certification_number' => $certNumber,
+            ]);
+
             // requires roles seeded already
             $user->assignRole('contractor');
 
             return $user;
         });
 
-        // Sanctum token (mobile/web apps use this)
+        // Sanctum token
         $token = $user->createToken('api')->plainTextToken;
 
         return response()->json([
@@ -104,6 +140,7 @@ class AuthController extends Controller
                 'email' => $user->email,
                 'roles' => $user->getRoleNames(),
                 'contractor_profile' => $user->load('contractorProfile')->contractorProfile,
+                'certified_person' => $user->load('certifiedPerson')->certifiedPerson,
             ],
             'token' => $token,
         ], 201);
@@ -515,4 +552,6 @@ class AuthController extends Controller
 
         return $code;
     }
+
+
 }

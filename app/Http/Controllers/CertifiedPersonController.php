@@ -23,8 +23,6 @@ class CertifiedPersonController extends Controller
     public function store(Request $request)
     {
 
-
-
         $contractor = $request->user()->contractorProfile;
 
         $data = $request->validate([

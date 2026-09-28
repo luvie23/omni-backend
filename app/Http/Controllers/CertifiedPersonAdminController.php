@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\CertifiedPerson;
 use App\Models\Contractor;
 use Illuminate\Http\Request;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class CertifiedPersonAdminController extends Controller
 {
@@ -55,29 +58,62 @@ class CertifiedPersonAdminController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
+            'email' => 'required|email:rfc,dns|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
             'distributor_code' => 'required|string|size:2|alpha',
         ]);
 
-        $certNumber = $this->generateCertificateNumber($data['distributor_code']);
+        $person = DB::transaction(function () use ($data, $contractor) {
+            // Generate certification number
+            $certNumber = $this->generateCertificateNumber(
+                $data['distributor_code']
+            );
 
-        // extra safety: retry on extremely unlikely collisions
-        $attempts = 0;
-        while (CertifiedPerson::where('certification_number', $certNumber)->exists()) {
-            $attempts++;
-            if ($attempts > 5) {
-                abort(500, 'Could not generate a unique certification number. Please try again.');
+            // Extra safety: retry on extremely unlikely collisions
+            $attempts = 0;
+
+            while (
+                CertifiedPerson::where(
+                    'certification_number',
+                    $certNumber
+                )->exists()
+            ) {
+                $attempts++;
+
+                if ($attempts > 5) {
+                    abort(
+                        500,
+                        'Could not generate a unique certification number. Please try again.'
+                    );
+                }
+
+                $certNumber = $this->generateCertificateNumber(
+                    $data['distributor_code']
+                );
             }
-            $certNumber = $this->generateCertificateNumber($data['distributor_code']);
-        }
 
-        $person = $contractor->certifiedPeople()->create([
-            'name' => $data['name'],
-            'certification_number' => $certNumber,
-        ]);
+            // Create the user
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => $data['email'],
+                'password' => Hash::make($data['password']),
+                'contractor_id' => $contractor->id,
+            ]);
+
+            // Give the user contractor permissions
+            $user->assignRole('contractor');
+
+            // Create the certified person and link it to the user
+            return $contractor->certifiedPeople()->create([
+                'user_id' => $user->id,
+                'name' => $data['name'],
+                'certification_number' => $certNumber,
+            ]);
+        });
 
         return response()->json([
-            'message' => 'Certified person created successfully.',
-            'data' => $person,
+            'message' => 'Certified person and user account created successfully.',
+            'data' => $person->load('user'),
         ], 201);
     }
 
@@ -117,13 +153,13 @@ class CertifiedPersonAdminController extends Controller
      */
     private function generateCertificateNumber(string $distributorCode): string
     {
-        return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(6);
+        return 'OMNI' . strtoupper($distributorCode) . '-' . now()->format('ym') . '-' . $this->randomCode(8);
     }
 
     /**
      * Random code from readable charset (no O/0, I/1, L).
      */
-    private function randomCode(int $length = 6): string
+    private function randomCode(int $length = 8): string
     {
         $characters = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
         $code = '';

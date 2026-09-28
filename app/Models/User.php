@@ -5,6 +5,7 @@ namespace App\Models;
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
@@ -42,7 +43,12 @@ class User extends Authenticatable
 
     public function contractorProfile()
     {
-        return $this->belongsTo(\App\Models\Contractor::class, 'contractor_id');
+        return $this->belongsTo(Contractor::class, 'contractor_id');
+    }
+
+    public function certifiedPerson(): HasOne
+    {
+        return $this->hasOne(CertifiedPerson::class);
     }
 
     public function estimates(): HasMany
