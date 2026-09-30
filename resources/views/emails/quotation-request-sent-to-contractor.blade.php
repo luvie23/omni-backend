@@ -1,18 +1,53 @@
-<p>Hello {{ $contractor->name }},</p>
+<p>Hello {{ $contractor->company_name }},</p>
 
-<p>You have received a new quotation request.</p>
+<p>
+    You’ve received a new customer inquiry through <strong>OMNI RGB</strong>.
+    This customer is looking for help with an OMNI RGB lighting project and has been referred to you as an OMNI RGB contractor in their area.
+</p>
 
-<h3>Customer Details</h3>
+<p>
+    Please review their information below and reach out to them directly to discuss their project and provide a quote.
+</p>
+
+<h3>Customer Information</h3>
+
 <ul>
     <li><strong>Name:</strong> {{ $quote->name }}</li>
+
+@if($quote->company_name)
     <li><strong>Company / Municipality:</strong> {{ $quote->company_name }}</li>
-    <li><strong>Address:</strong> {{ $quote->address }}</li>
-    <li><strong>City:</strong> {{ $quote->city }}</li>
-    <li><strong>State:</strong> {{ $quote->state }}</li>
-    <li><strong>ZIP:</strong> {{ $quote->zip }}</li>
-    <li><strong>Phone Number:</strong> {{ $quote->phone_number }}</li>
-    <li><strong>Email:</strong> {{ $quote->email }}</li>
+@endif
+
+<li>
+    <strong>Location:</strong>
+    {{ $quote->address }}, {{ $quote->city }}, {{ $quote->state }} {{ $quote->zip }}
+</li>
+
+<li>
+    <strong>Phone:</strong>
+    <a href="tel:{{ $quote->phone_number }}">{{ $quote->phone_number }}</a>
+</li>
+
+<li>
+    <strong>Email:</strong>
+    <a href="mailto:{{ $quote->email }}">{{ $quote->email }}</a>
+</li>
+
 </ul>
 
-<h3>Request Details</h3>
+<h3>Project Details</h3>
+
+@if($quote->details)
 <p>{{ $quote->details }}</p>
+@else
+<p>No additional project details were provided.</p>
+@endif
+
+<p>
+    We recommend contacting the customer as soon as possible while their inquiry is still fresh.
+</p>
+
+<p>
+    Thank you,<br>
+    <strong>OMNI RGB</strong>
+</p>
