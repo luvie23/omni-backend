@@ -10,6 +10,7 @@ use App\Models\Contractor;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class QuotationRequestAdminController extends Controller
 {
@@ -180,30 +181,80 @@ class QuotationRequestAdminController extends Controller
     }
 
     public function sendToContractor(Request $request)
-    {
-        $quotationRequestId = (int) $request->route('quotation_request');
-        $contractorId = (int) $request->route('contractor');
+{
+    $quotationRequestId = (int) $request->route('quotation_request');
+    $contractorId = (int) $request->route('contractor');
 
-        $quote = QuotationRequest::findOrFail($quotationRequestId);
+    $quote = QuotationRequest::findOrFail($quotationRequestId);
 
-        // Keep user relation only if you still need contractor user name
-        $contractor = Contractor::with('users')->findOrFail($contractorId);
+    $contractor = Contractor::with('users')->findOrFail($contractorId);
 
-        // Use contractor email directly
-        if (!$contractor->email) {
-            return response()->json([
-                'message' => 'Contractor email not found.',
-            ], 422);
+    // Make sure contractor has an email
+    if (!$contractor->email) {
+        return response()->json([
+            'message' => 'Contractor email not found.',
+        ], 422);
+    }
+
+    $alreadySent = $quote->contractors()
+        ->where('contractors.id', $contractor->id)
+        ->exists();
+
+    $emailSent = false;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Send email to contractor
+    |--------------------------------------------------------------------------
+    */
+    try {
+        Mail::to($contractor->email)
+            ->send(
+                new QuotationRequestSentToContractorMail(
+                    $quote,
+                    $contractor
+                )
+            );
+
+        $emailSent = true;
+
+    } catch (\Throwable $e) {
+
+        // Log the original failure
+        Log::error('Failed to send quotation request to contractor', [
+            'quotation_request_id' => $quote->id,
+            'contractor_id' => $contractor->id,
+            'contractor_email' => $contractor->email,
+            'contractor_company' => $contractor->company_name,
+            'error' => $e->getMessage(),
+        ]);
+
+
+        try {
+            Mail::raw(
+                "A quotation request email failed to send.\n\n" .
+                "Quotation Request ID: {$quote->id}\n" .
+                "Contractor: {$contractor->company_name}\n" .
+                "Contractor ID: {$contractor->id}\n" .
+                "Contractor Email: {$contractor->email}\n\n" .
+                "Customer: {$quote->name}\n" .
+                "Customer Email: {$quote->email}\n\n" .
+                "Error:\n{$e->getMessage()}",
+                function ($message) {
+                    $message
+                        ->to('luvie@lightsfordecorators.com')
+                        ->subject('OMNI RGB - Contractor Email Failed');
+                }
+            );
+        } catch (\Throwable $notificationException) {
+
+            Log::error('Failed to send contractor email failure notification', [
+                'error' => $notificationException->getMessage(),
+            ]);
         }
+    }
 
-        $alreadySent = $quote->contractors()
-            ->where('contractors.id', $contractor->id)
-            ->exists();
-
-        // Send mail to contractor email
-        Mail::to($contractor->email)->send(
-            new QuotationRequestSentToContractorMail($quote, $contractor)
-        );
+    if ($emailSent) {
 
         if ($alreadySent) {
 
@@ -227,26 +278,35 @@ class QuotationRequestAdminController extends Controller
                 'status' => 'contacted',
             ]);
         }
-
-        return response()->json([
-            'message' => $alreadySent
-                ? 'Quotation request resent successfully.'
-                : 'Quotation request sent successfully.',
-
-            'data' => [
-                'quotation_request_id' => $quote->id,
-
-                'contractor' => [
-                    'id' => $contractor->id,
-                    'name' => $contractor->user?->name,
-                    'email' => $contractor->email,
-                    'company_name' => $contractor->company_name,
-                ],
-
-                'resent' => $alreadySent,
-            ],
-        ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Response
+    |--------------------------------------------------------------------------
+    */
+    return response()->json([
+        'message' => $emailSent
+            ? ($alreadySent
+                ? 'Quotation request resent successfully.'
+                : 'Quotation request sent successfully.')
+            : 'Quotation request processed, but the contractor email could not be sent.',
+
+        'data' => [
+            'quotation_request_id' => $quote->id,
+
+            'contractor' => [
+                'id' => $contractor->id,
+                'name' => $contractor->user?->name,
+                'email' => $contractor->email,
+                'company_name' => $contractor->company_name,
+            ],
+
+            'resent' => $alreadySent,
+            'email_sent' => $emailSent,
+        ],
+    ]);
+}
 
 
     private function payload(QuotationRequest $quote): array
