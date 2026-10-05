@@ -48,6 +48,12 @@
 </p>
 
 <p>
+    <strong>Do not reply to this email.</strong><br>
+    If you have any questions or need assistance, please email
+    <a href="mailto:cs@lightsfordecorators.com">cs@lightsfordecorators.com</a>.
+</p>
+
+<p>
     Thank you,<br>
     <strong>OMNI RGB</strong>
 </p>
