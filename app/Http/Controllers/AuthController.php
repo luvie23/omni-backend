@@ -973,7 +973,15 @@ class AuthController extends Controller
                 ));
 
                 if ($dbCertificate !== $certificate) {
-                    $skip('Certification number mismatch.');
+                    $skipped[] = [
+                        'row' => $rowNumber,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'reason' => 'Certification number mismatch.',
+                        'csv_certificate' => $certificate,
+                        'correct_certificate' => $dbCertificate,
+                    ];
+
                     continue;
                 }
 
