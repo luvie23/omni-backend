@@ -16,6 +16,26 @@
         Your account is ready.
     </p>
 
+    <p>
+        You can access the Contractor Portal using the link below:
+    </p>
+
+    <p style="margin:24px 0;">
+        <a href="https://hub.omnirgb.com/"
+           style="background-color:#222;color:#fff;padding:12px 24px;
+                  text-decoration:none;border-radius:6px;
+                  display:inline-block;font-weight:bold;">
+            Login to Contractor Portal
+        </a>
+    </p>
+
+    <p>
+        Portal URL:
+        <a href="https://hub.omnirgb.com/">
+            https://hub.omnirgb.com/
+        </a>
+    </p>
+
     <p>Your login credentials are:</p>
 
     <table cellpadding="8" cellspacing="0"
