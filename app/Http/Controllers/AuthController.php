@@ -903,12 +903,15 @@ class AuthController extends Controller
 
                 $processed++;
 
-                $skip = function ($reason) use (
+               $skip = function ($reason) use (
                     &$skipped,
-                    $rowNumber
+                    $rowNumber,
+                    &$data
                 ) {
                     $skipped[] = [
                         'row' => $rowNumber,
+                        'name' => trim($data['name'] ?? ''),
+                        'email' => trim($data['email'] ?? ''),
                         'reason' => $reason,
                     ];
                 };
