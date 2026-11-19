@@ -16,6 +16,7 @@ use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use App\Mail\ContractorCredentialsMail;
 
 class AuthController extends Controller
 {
@@ -825,6 +826,192 @@ class AuthController extends Controller
         return response()->json([
             'message' => 'Password updated successfully.'
         ]);
+    }
+
+    public function emailContractorsCredentialsCsv(Request $request)
+    {
+        // Only administrators can send credential emails.
+        abort_unless(
+            $request->user()?->hasRole('admin'),
+            403,
+            'Unauthorized.'
+        );
+
+        $request->validate([
+            'file' => 'required|file|mimes:csv,txt|max:10240',
+            'send' => 'nullable|boolean',
+        ]);
+
+        // Default to dry run. Explicitly send=1 to email.
+        $send = $request->boolean('send');
+
+        $file = fopen($request->file('file')->getRealPath(), 'r');
+
+        if (!$file) {
+            return response()->json([
+                'message' => 'Could not open CSV.',
+            ], 422);
+        }
+
+        try {
+            $headers = fgetcsv($file);
+
+            if (!$headers) {
+                return response()->json([
+                    'message' => 'CSV has no headers.',
+                ], 422);
+            }
+
+            $headers = array_map(function ($header) {
+                return strtolower(trim(
+                    preg_replace('/^\xEF\xBB\xBF/', '', $header)
+                ));
+            }, $headers);
+
+            $required = [
+                'name',
+                'company',
+                'email',
+                'password',
+                'certificate number',
+            ];
+
+            $missing = array_diff($required, $headers);
+
+            if (!empty($missing)) {
+                return response()->json([
+                    'message' => 'Missing CSV columns.',
+                    'missing' => array_values($missing),
+                ], 422);
+            }
+
+            $processed = 0;
+            $eligible = 0;
+            $queued = 0;
+            $skipped = [];
+            $seenEmails = [];
+            $rowNumber = 1;
+
+            while (($row = fgetcsv($file)) !== false) {
+                $rowNumber++;
+
+                if (count(array_filter($row, fn ($v) =>
+                    trim((string) $v) !== ''
+                )) === 0) {
+                    continue;
+                }
+
+                $processed++;
+
+                $skip = function ($reason) use (
+                    &$skipped,
+                    $rowNumber
+                ) {
+                    $skipped[] = [
+                        'row' => $rowNumber,
+                        'reason' => $reason,
+                    ];
+                };
+
+                if (count($row) !== count($headers)) {
+                    $skip('Incorrect number of columns.');
+                    continue;
+                }
+
+                $data = array_combine($headers, $row);
+
+                $name = trim($data['name']);
+                $company = trim($data['company']);
+                $email = strtolower(trim($data['email']));
+                $password = trim($data['password']);
+                $certificate = strtoupper(
+                    trim($data['certificate number'])
+                );
+
+                if (
+                    $name === '' ||
+                    $company === '' ||
+                    !filter_var($email, FILTER_VALIDATE_EMAIL) ||
+                    $password === '' ||
+                    $certificate === ''
+                ) {
+                    $skip('Missing or invalid required information.');
+                    continue;
+                }
+
+                if (isset($seenEmails[$email])) {
+                    $skip('Duplicate email in CSV.');
+                    continue;
+                }
+
+                $seenEmails[$email] = true;
+
+                $user = User::where('email', $email)
+                    ->with('certifiedPerson')
+                    ->first();
+
+                if (!$user) {
+                    $skip('User not found in database.');
+                    continue;
+                }
+
+                if (!$user->hasRole('contractor')) {
+                    $skip('User is not a contractor.');
+                    continue;
+                }
+
+                if (!Hash::check($password, $user->password)) {
+                    $skip('CSV password does not match account.');
+                    continue;
+                }
+
+                $dbCertificate = strtoupper(trim(
+                    $user->certifiedPerson?->certification_number ?? ''
+                ));
+
+                if ($dbCertificate !== $certificate) {
+                    $skip('Certification number mismatch.');
+                    continue;
+                }
+
+                // Valid and matched account.
+                $eligible++;
+
+                if (!$send) {
+                    continue;
+                }
+
+                try {
+                    Mail::to($user->email)->queue(
+                        new ContractorCredentialsMail(
+                            $user->name,
+                            $user->email,
+                            $password,
+                            $certificate
+                        )
+                    );
+
+                    $queued++;
+                } catch (\Throwable $e) {
+                    $skip('Could not queue email.');
+                }
+            }
+
+            return response()->json([
+                'message' => $send
+                    ? 'Credential email queueing completed.'
+                    : 'Dry run completed. No emails sent.',
+                'dry_run' => !$send,
+                'processed' => $processed,
+                'eligible' => $eligible,
+                'queued' => $queued,
+                'skipped_count' => count($skipped),
+                'skipped' => $skipped,
+            ]);
+
+        } finally {
+            fclose($file);
+        }
     }
 
     private function generateCertificateNumber(string $distributorCode): string

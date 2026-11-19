@@ -261,6 +261,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // register a lot of contractors
         Route::post('/register/contractors/import-csv', [AuthController::class, 'importContractorsCsv']);
+        Route::post(
+            '/contractors/email-credentials-csv',
+            [AuthController::class, 'emailContractorsCredentialsCsv']
+        )->middleware('auth:sanctum');
 
 
     });
